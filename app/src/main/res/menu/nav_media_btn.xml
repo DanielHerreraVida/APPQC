@@ -1,0 +1,10 @@
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/navigation_pic"
+        android:title="Photos"
+        android:icon="@drawable/photopic_ic" />
+    <item
+        android:id="@+id/navigation_vid"
+        android:title="Videos"
+        android:icon="@drawable/video_ic" />
+</menu>

@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Colores originales oscuros -->
+    <color name="colorPrimary">#37474F</color>
+    <color name="colorPrimaryDark">#263238</color>
+    <color name="colorAccent">#546E7A</color>
+
+    <!-- Colores de fondo -->
+    <!-- <color name="background_dark">#263238</color>
+        <color name="viewfinder_mask">#60000000</color>
+        <color name="viewfinder_mask">#60000000</color>
+    <color name="text_primary">#FFFFFF</color>
+    <color name="text_secondary">#B0BEC5</color>
+    <color name="text_hint">#78909C</color>
+    <color name="green">#4CAF50</color>
+    <color name="purple_700">#3700B3</color>
+    <color name="purple_500">#6200EE</color>
+    <color name="teal_200">#03DAC5</color>
+        <color name="white_80">#CCFFFFFF</color>
+
+-->
+    <color name="card_background">#37474F</color>
+    <color name="background">#121212</color>
+    <color name="yellow">#FFC107</color>
+    <color name="red">#F44336</color>
+
+
+    <!-- Colores de texto -->
+
+
+    <color name="black">#000000</color>
+    <color name="white">#FFFFFF</color>
+    <!-- ========== COLORES ESPECÍFICOS PARA LOGIN ========== -->
+
+    <!-- Fondo del login -->
+
+    <color name="login_background_start">#1a1d29</color>
+
+    <color name="login_background_end">#2d3142</color>
+
+    <color name="status_inspected">#4CAF50</color>
+    <color name="status_sent">#2196F3</color>
+    <color name="status_rejected">#F44336</color>
+    <color name="status_approved">#8BC34A</color>
+    <color name="status_not_inspected">#9E9E9E</color>
+    <color name="selected_item">#E3F2FD</color>
+
+    <!-- Card del formulario -->
+
+    <color name="login_card_background">#FFFFFF</color>
+
+    <color name="login_card_background_dark">#2a2d3a</color>
+
+
+
+    <!-- Campos de entrada -->
+
+    <color name="login_input_background">#F5F5F7</color>
+
+    <color name="login_input_text">#1a1d29</color>
+
+    <color name="login_input_hint">#9CA3AF</color>
+
+
+
+    <!-- Botón de login -->
+
+    <color name="login_button_primary">#FF6B35</color>
+
+    <color name="login_button_primary_pressed">#E55A2B</color>
+
+
+
+    <!-- Textos del login -->
+
+    <color name="login_title">#FFFFFF</color>
+
+    <color name="login_subtitle">#D1D5DB</color>
+
+    <color name="login_label">#6B7280</color>
+
+
+
+    <!-- Logo card -->
+
+    <color name="login_logo_card">#FFFFFF</color>
+
+
+    <color name="background_dark">#263238</color>
+
+    <color name="viewfinder_mask">#60000000</color>
+
+    <color name="text_primary">#FFFFFF</color>
+
+    <color name="text_secondary">#B0BEC5</color>
+
+    <color name="text_hint">#78909C</color>
+
+
+    <color name="blue">#00569D</color>
+
+    <color name="green">#4CAF50</color>
+
+    <!-- Otros -->
+
+    <color name="purple_700">#3700B3</color>
+
+    <color name="purple_500">#6200EE</color>
+
+    <color name="teal_200">#03DAC5</color>
+
+    <color name="white_80">#CCFFFFFF</color>
+
+</resources>

@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:paddingTop="6dp"
+    android:paddingBottom="6dp"
+    android:paddingStart="4dp"
+    android:paddingEnd="4dp"
+    android:minHeight="40dp">
+
+    <TextView
+        android:id="@+id/tvBarcode"
+        android:layout_width="0dp"
+        android:layout_weight="1"
+        android:layout_height="wrap_content"
+        android:textAlignment="center"
+        android:textSize="10sp"
+        android:maxLines="2"
+        android:ellipsize="end"
+        android:text="-" />
+
+    <TextView
+        android:id="@+id/tvFloCod"
+        android:layout_width="0dp"
+        android:layout_weight="1"
+        android:layout_height="wrap_content"
+        android:textAlignment="center"
+        android:textSize="10sp"
+        android:maxLines="2"
+        android:ellipsize="end"
+        android:text="-" />
+
+    <TextView
+        android:id="@+id/tvComposition"
+        android:layout_width="0dp"
+        android:layout_weight="1.8"
+        android:layout_height="wrap_content"
+        android:textAlignment="center"
+        android:textSize="10sp"
+        android:maxLines="3"
+        android:ellipsize="end"
+        android:paddingStart="2dp"
+        android:paddingEnd="2dp"
+        android:text="-" />
+
+    <TextView
+        android:id="@+id/tvIssues"
+        android:layout_width="0dp"
+        android:layout_weight="0.6"
+        android:layout_height="wrap_content"
+        android:textAlignment="center"
+        android:textSize="11sp"
+        android:textStyle="bold"
+        android:text="-" />
+
+</LinearLayout>

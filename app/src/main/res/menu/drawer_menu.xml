@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    tools:showIn="navigation_view">
+
+    <group android:checkableBehavior="single">
+        <item
+            android:id="@+id/checkOrders"
+            android:icon="@drawable/baseline_search_black_18dp"
+            android:title="To Inspect" />
+        <item
+            android:id="@+id/viewHistory"
+            android:icon="@drawable/baseline_history_black_18dp"
+            android:title="View History" />
+        <item
+            android:id="@+id/toRelease"
+            android:icon="@drawable/release"
+            android:title="To Release" />
+    </group>
+
+    <item android:title="Account">
+        <menu>
+            <item
+                android:id="@+id/settingsItem"
+                android:icon="@drawable/ic_settings"
+                android:title="Settings" />
+            <item
+                android:id="@+id/LogoutItem"
+                android:icon="@drawable/baseline_power_settings_new_black_18dp"
+                android:title="Log Out" />
+            <item
+                android:id="@+id/versionItem"
+                android:title="@string/app_version"
+                android:enabled="false" />
+        </menu>
+    </item>
+</menu>

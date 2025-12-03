@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="16dp">
+
+    <LinearLayout
+        android:orientation="horizontal"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <Button
+            android:id="@+id/btn_Video"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Take Video" />
+
+        <Button
+            android:id="@+id/btn_VFiles"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="File" />
+
+        <Button
+            android:id="@+id/btn_Continue"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Continue" />
+
+        <ImageButton
+            android:id="@+id/btn_DeleteVLst"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_margin="8dp"
+            android:background="@android:color/transparent"
+            android:contentDescription="Delete all videos"
+            android:src="@android:drawable/ic_menu_delete"
+            android:tint="@android:color/holo_red_dark" />
+
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/tV_TotalVideos"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Total: 0" />
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <androidx.viewpager2.widget.ViewPager2
+            android:id="@+id/viewPagerVideos"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+
+        <!-- Flecha izquierda -->
+        <ImageButton
+            android:id="@+id/btnPrevVideo"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_gravity="center_vertical|start"
+            android:layout_marginStart="12dp"
+            android:background="@drawable/bg_arrow_circle"
+            android:src="@drawable/ic_arrow_left"
+            android:tint="@android:color/white"
+            android:contentDescription="Previous" />
+
+        <!-- Flecha derecha -->
+        <ImageButton
+            android:id="@+id/btnNextVideo"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_gravity="center_vertical|end"
+            android:layout_marginEnd="12dp"
+            android:background="@drawable/bg_arrow_circle"
+            android:src="@drawable/ic_arrow_right"
+            android:tint="@android:color/white"
+            android:contentDescription="Next" />
+        <ProgressBar
+            android:id="@+id/progressBar"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:visibility="gone"
+            style="?android:attr/progressBarStyleLarge" />
+
+    </FrameLayout>
+
+</LinearLayout>

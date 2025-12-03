@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="16dp">
+
+    <LinearLayout
+        android:orientation="horizontal"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <Button
+            android:id="@+id/btn_Camera"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Take Photo" />
+
+        <Button
+            android:id="@+id/btn_Files"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Files" />
+
+        <Button
+            android:id="@+id/btn_Continue"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Continue" />
+
+        <ImageButton
+            android:id="@+id/btn_DeletePhLst"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_margin="8dp"
+            android:background="@android:color/transparent"
+            android:contentDescription="Delete all photos"
+            android:src="@android:drawable/ic_menu_delete"
+            android:tint="@android:color/holo_red_dark" />
+
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/tV_TotalImages"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Total: 0" />
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <androidx.viewpager2.widget.ViewPager2
+            android:id="@+id/viewPagerPhotos"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+
+        <!-- Flecha izquierda -->
+        <ImageButton
+            android:id="@+id/btnPrev"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_gravity="center_vertical|start"
+            android:layout_marginStart="12dp"
+            android:background="@drawable/bg_arrow_circle"
+            android:src="@drawable/ic_arrow_left"
+            android:tint="@android:color/white"
+            android:contentDescription="Previous" />
+
+        <!-- Flecha derecha -->
+        <ImageButton
+            android:id="@+id/btnNext"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_gravity="center_vertical|end"
+            android:layout_marginEnd="12dp"
+            android:background="@drawable/bg_arrow_circle"
+            android:src="@drawable/ic_arrow_right"
+            android:tint="@android:color/white"
+            android:contentDescription="Next" />
+
+    </FrameLayout>
+<!--    <TextView-->
+<!--        android:id="@+id/photoPositionIndicator"-->
+<!--        android:layout_width="wrap_content"-->
+<!--        android:layout_height="wrap_content"-->
+<!--        android:text="Foto 1/1"-->
+<!--        android:textColor="@android:color/white"-->
+<!--        android:textStyle="bold"-->
+<!--        android:layout_gravity="bottom|end"-->
+<!--        android:padding="12dp"-->
+<!--        android:background="#66000000"-->
+<!--        android:elevation="8dp"-->
+<!--        android:layout_margin="8dp"-->
+<!--        android:textSize="14sp"/>-->
+    <!-- Debería estar en fragment_qc_evidence_photo.xml -->
+    <ProgressBar
+        android:id="@+id/progressBar"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:visibility="gone" />
+
+</LinearLayout>

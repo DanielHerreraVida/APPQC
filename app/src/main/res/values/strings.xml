@@ -1,0 +1,12 @@
+<resources>
+    <string name="app_name">QCEQAPP</string>
+    <string name="app_version">Version 2.0.0</string>
+
+    <string name="navigation_drawer_open">Open navigation drawer</string>
+    <string name="navigation_drawer_close">Close navigation drawer</string>
+    <string name="media_image">Media item</string>
+    <string name="no_video">No video available</string>
+    <string name="prompt_select_category">select category</string>
+    <string name="issueprompt">Please describe the issue</string>
+
+</resources>

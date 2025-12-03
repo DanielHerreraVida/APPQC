@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- Permisos básicos -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.CAMERA" />
+
+    <!-- Permisos para Android 13+ (API 33+) -->
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
+
+    <!-- Permisos para Android 10-12 (API 29-32) -->
+    <uses-permission
+        android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
+
+    <!-- Permisos para Android 9 y anteriores (API 28-) -->
+    <uses-permission
+        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="29"
+        tools:ignore="ScopedStorage" />
+
+    <!-- Features de hardware (no requeridos para que funcione en todos los dispositivos) -->
+    <uses-feature
+        android:name="android.hardware.camera"
+        android:required="false" />
+    <uses-feature
+        android:name="android.hardware.camera.autofocus"
+        android:required="false" />
+
+    <application
+        android:allowBackup="true"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.QCEQAPP">
+
+        <activity
+            android:name=".uis.login.LoginActivity"
+            android:exported="true"
+            android:theme="@style/Theme.QCEQAPP">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <activity
+            android:name=".uis.main.MainActivity"
+            android:exported="false"
+            android:theme="@style/Theme.QCEQAPP" />
+
+        <activity
+            android:name=".uis.scanner.BarcodeScannerActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.QCEQAPP" />
+
+        <activity
+            android:name=".uis.toinspect.FiltersActivity"
+            android:exported="false"
+            android:theme="@style/Theme.QCEQAPP" />
+
+        <activity
+            android:name=".uis.infobox.InfoBoxActivity"
+            android:exported="false"
+            android:theme="@style/Theme.QCEQAPP" />
+
+        <activity
+            android:name=".uis.toinspect.ScanOrder"
+            android:exported="false"
+            android:theme="@style/Theme.QCEQAPP" />
+
+        <activity
+            android:name=".uis.viewhistory.FilterQCHistoryActivity"
+            android:exported="false"
+            android:theme="@style/Theme.QCEQAPP" />
+
+        <activity
+            android:name=".uis.QCBoxes.QCBoxesActivity"
+            android:exported="false"
+            android:theme="@style/Theme.QCEQAPP" />
+
+        <activity
+            android:name=".uis.QCInspection.QCInspectionActivity"
+            android:label="QC Inspection"
+            android:exported="false"
+            android:theme="@style/Theme.QCEQAPP"/>
+
+        <activity
+            android:name=".uis.QCInspection.QCMediaActivity"
+            android:label="QC Inspection"
+            android:exported="false"
+            android:theme="@style/Theme.QCEQAPP"/>
+
+        <activity
+            android:name=".uis.QCInspection.QCCompositionActivity"
+            android:label="QC Inspection"
+            android:exported="false"
+            android:theme="@style/Theme.AppCompat.Light.NoActionBar" />
+
+        <activity
+            android:name=".uis.QCOrderSent.QCOrderSentActivity"
+            android:label="View history"
+            android:exported="false"
+            android:theme="@style/Theme.QCEQAPP"/>
+
+        <activity
+            android:name=".uis.QCOrderSent.SendInspectionActivity"
+            android:exported="false"
+            android:theme="@style/Theme.QCEQAPP" />
+
+        <activity
+            android:name=".uis.main.SettingsActivity"
+            android:exported="false"
+            android:theme="@style/Theme.QCEQAPP" />
+
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.provider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+
+    </application>
+
+</manifest>
