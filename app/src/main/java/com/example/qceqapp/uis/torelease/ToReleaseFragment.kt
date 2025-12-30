@@ -8,6 +8,8 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.view.inputmethod.EditorInfo
+import android.widget.AdapterView
+import android.widget.ArrayAdapter
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.ActivityResultLauncher
@@ -24,11 +26,15 @@ import com.example.qceqapp.uis.scanner.BarcodeScannerActivity
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.*
 
 class ToReleaseFragment : Fragment() {
 
     companion object {
         private const val TAG = "ToReleaseFragment"
+        private const val VIEW_PENDING = 0
+        private const val VIEW_HISTORY = 1
     }
 
     private var _binding: FragmentToReleaseBinding? = null
@@ -36,17 +42,18 @@ class ToReleaseFragment : Fragment() {
     private var currentFilterDialog: ReleaseFilterDialog? = null
 
     private val viewModel: ToReleaseViewModel by viewModels()
-    private lateinit var adapter: ReleaseAdapter
+    private lateinit var historyAdapter: ReleaseAdapter
+    private lateinit var pendingAdapter: PendingReleaseAdapter
     private var skipNextResume = false
+    private var currentView = VIEW_HISTORY
+
+    private var historyFilters = ReleaseFilterDialog.FilterOptions()
+    private var pendingFilters = ReleaseFilterDialog.FilterOptions()
 
     private lateinit var scannerLauncher: ActivityResultLauncher<Intent>
 
-    // ✅ Callback para bloquear el botón de retroceso
     private val backPressCallback = object : OnBackPressedCallback(true) {
         override fun handleOnBackPressed() {
-            // ✅ No hacer nada - bloquear completamente el botón back
-            // Opcionalmente puedes mostrar un mensaje
-            // showMessage("Back button is disabled in this screen")
         }
     }
 
@@ -61,18 +68,16 @@ class ToReleaseFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-
-        // ✅ Registrar el callback del botón back
         setupBackPressHandler()
-
         initializeFragment()
     }
 
     override fun onResume() {
         super.onResume()
         handleResume()
-        // Solicitar foco cuando el fragment vuelve a estar activo
-        requestSearchFocus()
+        binding.etSearch.postDelayed({
+            requestSearchFocus()
+        }, 100)
     }
 
     override fun onDestroyView() {
@@ -80,7 +85,6 @@ class ToReleaseFragment : Fragment() {
         super.onDestroyView()
     }
 
-    // ✅ Método para bloquear el botón de retroceso
     private fun setupBackPressHandler() {
         requireActivity().onBackPressedDispatcher.addCallback(
             viewLifecycleOwner,
@@ -91,13 +95,13 @@ class ToReleaseFragment : Fragment() {
     private fun initializeFragment() {
         runCatching {
             setupActivityResultLaunchers()
-            setupRecyclerView()
+            setupViewSelector()
+            setupRecyclerViews()
             setupSearchListener()
             setupButtons()
             observeViewModel()
             viewModel.loadReleasedBoxes()
 
-            // Solicitar foco inicial después de un pequeño delay
             binding.etSearch.postDelayed({
                 requestSearchFocus()
             }, 300)
@@ -106,17 +110,74 @@ class ToReleaseFragment : Fragment() {
         }
     }
 
+    private fun setupViewSelector() {
+        val viewOptions = arrayOf("Pending Items", "Release History")
+        val adapter = ArrayAdapter(
+            requireContext(),
+            android.R.layout.simple_spinner_item,
+            viewOptions
+        ).apply {
+            setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        }
+
+        binding.spinnerViewSelector.adapter = adapter
+        binding.spinnerViewSelector.setSelection(VIEW_HISTORY)
+
+        binding.spinnerViewSelector.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+                currentView = position
+                switchView(position)
+            }
+
+            override fun onNothingSelected(parent: AdapterView<*>?) {}
+        }
+    }
+
+    private fun switchView(viewType: Int) {
+        when (viewType) {
+            VIEW_PENDING -> {
+                binding.recyclerPending.isVisible = true
+                binding.recyclerHistory.isVisible = false
+                viewModel.applyFilters(pendingFilters)
+
+                updateEmptyState(viewModel.pendingItems.value.isEmpty(), "No pending items")
+                updateItemCount(viewModel.pendingItems.value.size)
+
+                binding.btnProcess.isEnabled = viewModel.pendingItems.value.isNotEmpty()
+                binding.btnProcess.alpha = if (viewModel.pendingItems.value.isNotEmpty()) 1.0f else 0.5f
+            }
+            VIEW_HISTORY -> {
+                binding.recyclerPending.isVisible = false
+                binding.recyclerHistory.isVisible = true
+                viewModel.applyFilters(historyFilters)
+
+                updateEmptyState(viewModel.filteredBoxes.value.isEmpty(), "No release history")
+                updateItemCount(viewModel.filteredBoxes.value.size)
+
+                binding.btnProcess.isEnabled = false
+                binding.btnProcess.alpha = 0.5f
+            }
+        }
+    }
+
+    private fun updateItemCount(count: Int) {
+        binding.tvItemCount.text = "($count)"
+    }
+
+    private fun updateEmptyState(isEmpty: Boolean, message: String) {
+        binding.layoutEmptyState.isVisible = isEmpty
+        binding.tvEmptyMessage.text = message
+    }
+
     private fun setupActivityResultLaunchers() {
         scannerLauncher = registerForActivityResult(
             ActivityResultContracts.StartActivityForResult()
         ) { result ->
             skipNextResume = true
 
-            // Verificar si el escaneo viene de los filtros
             val scanType = result.data?.getStringExtra("TYPE")
 
             if (scanType == "filter") {
-                // Escaneo desde filtros
                 if (result.resultCode == Activity.RESULT_OK) {
                     val scannedCode = result.data?.getStringExtra("SCANNED_CODE")
                     scannedCode?.let { code ->
@@ -124,41 +185,43 @@ class ToReleaseFragment : Fragment() {
                     }
                 }
             } else {
-                // Escaneo normal para release
                 handleScanResult(result.resultCode, result.data?.getStringExtra("SCANNED_CODE"))
             }
         }
     }
 
-    private fun setupRecyclerView() {
-        adapter = ReleaseAdapter(
+    private fun setupRecyclerViews() {
+        pendingAdapter = PendingReleaseAdapter(
+            pendingItems = emptyList(),
+            onItemClick = ::showPendingItemInfo,
+            onDeleteClick = ::handleDeletePendingItem
+        )
+        binding.recyclerPending.apply {
+            layoutManager = LinearLayoutManager(requireContext())
+            adapter = pendingAdapter
+            setHasFixedSize(true)
+        }
+
+        historyAdapter = ReleaseAdapter(
             boxes = emptyList(),
             onBoxClick = ::handleBoxClick,
             onUserClick = ::showBoxInfo,
             onDeleteClick = ::handleDeleteBox
         )
-
-        binding.recyclerOrders.apply {
+        binding.recyclerHistory.apply {
             layoutManager = LinearLayoutManager(requireContext())
-            adapter = this@ToReleaseFragment.adapter
+            adapter = historyAdapter
             setHasFixedSize(true)
         }
     }
 
     private fun setupSearchListener() {
-        // Búsqueda en tiempo real mientras se escribe
         binding.etSearch.addTextChangedListener { text ->
             val query = text.toString()
-            if (query.isEmpty()) {
-                viewModel.searchBoxes("")
-            } else {
-                viewModel.searchBoxes(query)
-            }
+            viewModel.searchBoxes(query)
         }
 
-        // Manejo del botón Enter/Done del teclado y pistolas de escaneo
         binding.etSearch.setOnEditorActionListener { v, actionId, event ->
-            // Detectar Enter del teclado físico, pistola de escaneo o botón Done
             val isEnterPressed = event?.keyCode == android.view.KeyEvent.KEYCODE_ENTER &&
                     event.action == android.view.KeyEvent.ACTION_DOWN
             val isDoneAction = actionId == EditorInfo.IME_ACTION_DONE ||
@@ -184,45 +247,86 @@ class ToReleaseFragment : Fragment() {
         binding.btnScan.setOnClickListener {
             openScanner()
         }
-    }
 
-    private fun showFilterDialog() {
-        val allUsers = viewModel.getAllUsers()
-
-        if (allUsers.isEmpty()) {
-            showMessage("No data available to filter")
-            return
+        binding.btnProcess.setOnClickListener {
+            handleProcessPending()
         }
+    }
+    private fun showFilterDialog() {
+        when (currentView) {
+            VIEW_PENDING -> {
+                val pendingBoxes = viewModel.pendingItems.value.map { it.box }.distinct().sorted()
 
-        currentFilterDialog = ReleaseFilterDialog(
-            context = requireContext(),
-            allUsers = allUsers,
-            currentFilters = viewModel.getCurrentFilters(),
-            onApplyFilters = { filters ->
-                viewModel.applyFilters(filters)
-
-                // Contar filtros activos
-                var filterCount = 0
-                if (filters.selectedUsers.isNotEmpty()) filterCount++
-                if (filters.startDate != null || filters.endDate != null) filterCount++
-                if (filters.scannedBoxes.isNotEmpty()) filterCount++
-
-                if (filterCount > 0) {
-                    showMessage("$filterCount filter(s) applied")
-                } else {
-                    showMessage("All filters cleared")
+                if (pendingBoxes.isEmpty()) {
+                    showMessage("No pending items to filter")
+                    return
                 }
 
-                currentFilterDialog = null
-            },
-            onScanRequested = {
-                openFilterScanner()
+                currentFilterDialog = ReleaseFilterDialog(
+                    context = requireContext(),
+                    allUsers = emptyList(),
+                    allBoxes = pendingBoxes,
+                    currentFilters = pendingFilters,
+                    isPendingView = true,
+                    onApplyFilters = { filters ->
+                        pendingFilters = filters
+                        viewModel.applyPendingFilters(filters)
+
+                        val filterCount = if (filters.scannedBoxes.isNotEmpty()) 1 else 0
+                        if (filterCount > 0) {
+                            showMessage("$filterCount filter(s) applied to Pending")
+                        } else {
+                            showMessage("All Pending filters cleared")
+                        }
+
+                        currentFilterDialog = null
+                    },
+                    onScanRequested = {
+                        openFilterScanner()
+                    }
+                )
             }
-        )
+            VIEW_HISTORY -> {
+                val allUsers = viewModel.getAllUsers()
+                val historyBoxes = viewModel.releasedBoxes.value.map { it.box.toString() }.distinct().sorted()
+
+                if (allUsers.isEmpty() && historyBoxes.isEmpty()) {
+                    showMessage("No history data to filter")
+                    return
+                }
+
+                currentFilterDialog = ReleaseFilterDialog(
+                    context = requireContext(),
+                    allUsers = allUsers,
+                    allBoxes = historyBoxes,
+                    currentFilters = historyFilters,
+                    isPendingView = false,
+                    onApplyFilters = { filters ->
+                        historyFilters = filters
+                        viewModel.applyHistoryFilters(filters)
+
+                        var filterCount = 0
+                        if (filters.selectedUsers.isNotEmpty()) filterCount++
+                        if (filters.startDate != null || filters.endDate != null) filterCount++
+                        if (filters.scannedBoxes.isNotEmpty()) filterCount++
+
+                        if (filterCount > 0) {
+                            showMessage("$filterCount filter(s) applied to History")
+                        } else {
+                            showMessage("All History filters cleared")
+                        }
+
+                        currentFilterDialog = null
+                    },
+                    onScanRequested = {
+                        openFilterScanner()
+                    }
+                )
+            }
+        }
 
         currentFilterDialog?.show()
     }
-
     private fun openFilterScanner() {
         val intent = Intent(requireContext(), BarcodeScannerActivity::class.java).apply {
             putExtra("ORDER_CODE", "Filter Scan")
@@ -232,42 +336,163 @@ class ToReleaseFragment : Fragment() {
         scannerLauncher.launch(intent)
     }
 
+    private fun showDuplicateAlert(message: String) {
+        val snackbar = com.google.android.material.snackbar.Snackbar.make(
+            binding.root,
+            message,
+            com.google.android.material.snackbar.Snackbar.LENGTH_LONG
+        )
+
+        val snackbarView = snackbar.view
+        snackbarView.setBackgroundColor(
+            android.graphics.Color.parseColor("#D32F2F")
+        )
+
+        val textView = snackbarView.findViewById<android.widget.TextView>(
+            com.google.android.material.R.id.snackbar_text
+        )
+        textView.setTextColor(android.graphics.Color.WHITE)
+        textView.textSize = 16f
+        textView.maxLines = 3
+
+        snackbar.show()
+    }
+
     private fun observeViewModel() {
         observeFlow(viewModel.isLoading) { isLoading ->
             binding.progressBar.isVisible = isLoading
-            binding.recyclerOrders.isVisible = !isLoading
+            if (!isLoading) {
+                setProcessButtonLoading(false)
+            }
         }
 
         observeFlow(viewModel.error) { error ->
             error?.let {
                 showError(it)
                 viewModel.clearError()
+                setProcessButtonLoading(false)
+            }
+        }
+
+        observeFlow(viewModel.duplicateMessage) { message ->
+            message?.let {
+                showDuplicateAlert(it)
+                viewModel.clearDuplicateMessage()
+            }
+        }
+
+        observeFlow(viewModel.warning) { warning ->
+            warning?.let {
+                showMessage(it)
+                viewModel.clearWarning()
+            }
+        }
+
+        observeFlow(viewModel.playErrorSound) { shouldPlay ->
+            if (shouldPlay) {
+                playErrorSound()
+                viewModel.clearErrorSoundFlag()
             }
         }
 
         observeFlow(viewModel.filteredBoxes) { boxes ->
-            updateAdapter(boxes)
+            updateHistoryAdapter(boxes)
+            if (currentView == VIEW_HISTORY) {
+                updateItemCount(boxes.size)
+                updateEmptyState(boxes.isEmpty(), "No release history")
+            }
         }
 
-        // Observar resultado del release
+        observeFlow(viewModel.pendingItems) { items ->
+            updatePendingAdapter(items)
+            if (currentView == VIEW_PENDING) {
+                updateItemCount(items.size)
+                updateEmptyState(items.isEmpty(), "No pending items")
+                binding.btnProcess.isEnabled = items.isNotEmpty()
+                binding.btnProcess.alpha = if (items.isNotEmpty()) 1.0f else 0.5f
+            }
+        }
+
         observeFlow(viewModel.releaseResult) { result ->
             result?.let {
+                setProcessButtonLoading(false)
+
                 when (it) {
                     is ToReleaseViewModel.ReleaseResult.Success -> {
                         showSuccessMessage(it.message)
+                        binding.spinnerViewSelector.setSelection(VIEW_HISTORY)
                         binding.etSearch.text?.clear()
-                        // Volver a solicitar el foco después de limpiar
-                        requestSearchFocus()
+                        binding.etSearch.postDelayed({
+                            requestSearchFocus()
+                        }, 100)
                     }
                     is ToReleaseViewModel.ReleaseResult.Error -> {
                         showError(it.message)
                         binding.etSearch.text?.clear()
-                        requestSearchFocus()
+                        binding.etSearch.postDelayed({
+                            requestSearchFocus()
+                        }, 100)
+                    }
+                    is ToReleaseViewModel.ReleaseResult.PartialSuccess -> {
+                        val message = buildString {
+                            append("Released: ${it.successCount}\n")
+                            append("Failed: ${it.failedCount}\n")
+                            append("Failed IDs: ${it.failedIds.joinToString(", ")}")
+                        }
+                        showPartialSuccessDialog(message, it.successCount)
+                        binding.etSearch.text?.clear()
+                        binding.etSearch.postDelayed({
+                            requestSearchFocus()
+                        }, 100)
                     }
                 }
                 viewModel.clearReleaseResult()
             }
         }
+    }
+
+    private fun showPartialSuccessDialog(message: String, successCount: Int) {
+        android.app.AlertDialog.Builder(requireContext())
+            .setTitle("Partial Success")
+            .setMessage(message)
+            .setPositiveButton("OK") { dialog, _ ->
+                dialog.dismiss()
+                if (successCount > 0) {
+                    showMessage("$successCount box(es) were released successfully")
+                }
+            }
+            .show()
+    }
+
+    private fun playErrorSound() {
+        try {
+            val toneGen = android.media.ToneGenerator(
+                android.media.AudioManager.STREAM_NOTIFICATION,
+                100
+            )
+            toneGen.startTone(android.media.ToneGenerator.TONE_PROP_BEEP, 150)
+
+            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                toneGen.release()
+            }, 200)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error playing error sound", e)
+        }
+    }
+
+    private fun handleManualScan(scannedCode: String) {
+        val code = scannedCode.trim()
+
+        if (code.isEmpty()) {
+            return
+        }
+
+        viewModel.addPendingItem(code)
+
+        binding.etSearch.setText("")
+        binding.etSearch.postDelayed({
+            requestSearchFocus()
+        }, 100)
     }
 
     private fun <T> observeFlow(
@@ -288,60 +513,74 @@ class ToReleaseFragment : Fragment() {
         }
     }
 
-    private fun updateAdapter(boxes: List<Entities.ReleaseBoxHistoryResponse>) {
-        adapter.updateData(boxes)
-        if (boxes.isEmpty() && viewModel.releasedBoxes.value.isNotEmpty()) {
-            showMessage("No boxes match the search")
+    private fun updateHistoryAdapter(boxes: List<Entities.ReleaseBoxHistoryResponse>) {
+        historyAdapter.updateData(boxes)
+        binding.recyclerHistory.post {
+            binding.recyclerHistory.requestLayout()
         }
+    }
+
+    private fun updatePendingAdapter(items: List<PendingReleaseItem>) {
+        pendingAdapter.updateData(items)
     }
 
     private fun handleScanResult(resultCode: Int, scannedCode: String?) {
         when (resultCode) {
             Activity.RESULT_OK -> {
                 if (!scannedCode.isNullOrEmpty()) {
-                    binding.etSearch.setText(scannedCode)
                     handleManualScan(scannedCode)
                 } else {
-                    showError("No code detected. Please try again.")
-                    requestSearchFocus()
+                    showMessage("No code detected")
+                    binding.etSearch.postDelayed({
+                        requestSearchFocus()
+                    }, 100)
                 }
             }
             Activity.RESULT_CANCELED -> {
-                Log.d(TAG, "Scan was canceled by user")
-                requestSearchFocus()
+                Log.d(TAG, "Scan was canceled")
+                binding.etSearch.postDelayed({
+                    requestSearchFocus()
+                }, 100)
             }
             else -> {
-                showError("Scan canceled.")
-                requestSearchFocus()
+                showMessage("Scan canceled")
+                binding.etSearch.postDelayed({
+                    requestSearchFocus()
+                }, 100)
             }
         }
     }
 
-    private fun handleManualScan(scannedCode: String) {
-        val code = scannedCode.trim()
-        if (code.isEmpty()) {
-            showError("Invalid code.")
+    private fun handleProcessPending() {
+        val itemCount = viewModel.pendingItems.value.size
+
+        if (itemCount == 0) {
+            showMessage("No items to process")
             return
         }
 
-        // Mostrar diálogo de confirmación antes de liberar el box
         android.app.AlertDialog.Builder(requireContext())
-            .setTitle("Release Box")
-            .setMessage("Do you want to release box: $code?")
+            .setTitle("Process Items")
+            .setMessage("Release $itemCount pending item(s)?")
             .setPositiveButton("Yes") { _, _ ->
-                // Llamar al release
-                viewModel.releaseBox(code)
+                setProcessButtonLoading(true)
+                viewModel.releaseAllPending()
             }
-            .setNegativeButton("No") { dialog, _ ->
-                dialog.dismiss()
-                binding.etSearch.text?.clear()
-                requestSearchFocus()
-            }
+            .setNegativeButton("Cancel", null)
             .show()
     }
 
+    private fun setProcessButtonLoading(isLoading: Boolean) {
+        binding.btnProcess.isEnabled = !isLoading
+        binding.btnProcess.text = if (isLoading) "" else "Process"
+        binding.progressBarProcess.isVisible = isLoading
+
+        binding.btnScan.isEnabled = !isLoading
+        binding.btnFilter.isEnabled = !isLoading
+        binding.etSearch.isEnabled = !isLoading
+    }
+
     private fun handleBoxClick(box: Entities.ReleaseBoxHistoryResponse) {
-        // Mostrar información del box al hacer clic
         showBoxInfo(box)
     }
 
@@ -362,10 +601,32 @@ class ToReleaseFragment : Fragment() {
             .show()
     }
 
+    private fun showPendingItemInfo(item: PendingReleaseItem) {
+        val info = """
+            Box ID: ${item.box}
+            Status: Pending release
+            Scanned at: ${formatTimestamp(item.scannedAt)}
+        """.trimIndent()
+
+        android.app.AlertDialog.Builder(requireContext())
+            .setTitle("Pending Item")
+            .setMessage(info)
+            .setPositiveButton("OK", null)
+            .setNegativeButton("Remove") { _, _ ->
+                handleDeletePendingItem(item)
+            }
+            .show()
+    }
+
+    private fun handleDeletePendingItem(item: PendingReleaseItem) {
+        viewModel.removePendingItem(item)
+        showMessage("Item removed")
+    }
+
     private fun formatDate(dateString: String): String {
         return try {
-            val inputFormat = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS", java.util.Locale.getDefault())
-            val outputFormat = java.text.SimpleDateFormat("dd/MM/yyyy HH:mm", java.util.Locale.getDefault())
+            val inputFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS", Locale.getDefault())
+            val outputFormat = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
             val date = inputFormat.parse(dateString)
             date?.let { outputFormat.format(it) } ?: dateString
         } catch (e: Exception) {
@@ -373,14 +634,19 @@ class ToReleaseFragment : Fragment() {
         }
     }
 
+    private fun formatTimestamp(timestamp: Long): String {
+        val format = SimpleDateFormat("dd/MM/yyyy HH:mm:ss", Locale.getDefault())
+        return format.format(Date(timestamp))
+    }
+
     private fun handleDeleteBox(box: Entities.ReleaseBoxHistoryResponse) {
         android.app.AlertDialog.Builder(requireContext())
-            .setTitle("Delete Release Record")
-            .setMessage("Are you sure you want to delete the release record for box: ${box.box}?")
-            .setPositiveButton("Yes") { _, _ ->
-                showMessage("Delete functionality not implemented yet")
+            .setTitle("Delete Box")
+            .setMessage("Are you sure you want to delete box ${box.box}?\n\nThis action cannot be undone.")
+            .setPositiveButton("Delete") { _, _ ->
+                viewModel.deleteReleasedBox(box)
             }
-            .setNegativeButton("No", null)
+            .setNegativeButton("Cancel", null)
             .show()
     }
 
@@ -401,27 +667,21 @@ class ToReleaseFragment : Fragment() {
         }
     }
 
-    /**
-     * Solicita el foco en el campo de búsqueda y muestra el teclado
-     */
     private fun requestSearchFocus() {
         if (!isAdded || isDetached || _binding == null) return
 
         binding.etSearch.apply {
             requestFocus()
-            // Mostrar el teclado virtual
             val imm = context?.getSystemService(android.content.Context.INPUT_METHOD_SERVICE)
                     as? android.view.inputmethod.InputMethodManager
-            imm?.showSoftInput(this, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
+            imm?.hideSoftInputFromWindow(this.windowToken, 0)
         }
     }
 
     private fun cleanupFragment() {
         runCatching {
-            // ✅ Remover el callback del botón back
             backPressCallback.remove()
 
-            // Ocultar el teclado antes de destruir
             val imm = context?.getSystemService(android.content.Context.INPUT_METHOD_SERVICE)
                     as? android.view.inputmethod.InputMethodManager
             imm?.hideSoftInputFromWindow(binding.etSearch.windowToken, 0)
@@ -439,16 +699,7 @@ class ToReleaseFragment : Fragment() {
     }
 
     private fun showSuccessMessage(message: String) {
-        if (!isAdded || isDetached) return
-
-        android.app.AlertDialog.Builder(requireContext())
-            .setTitle("Success")
-            .setMessage(message)
-            .setIcon(android.R.drawable.ic_dialog_info)
-            .setPositiveButton("OK") { dialog, _ ->
-                dialog.dismiss()
-            }
-            .show()
+        showMessage(message)
     }
 
     private fun showError(message: String) {

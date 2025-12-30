@@ -28,7 +28,6 @@ class LoginActivity : AppCompatActivity() {
 
         sessionManager = SessionManager(this)
 
-        // IMPORTANTE: Cargar URL guardada ANTES de cualquier otra operación
         initializeBaseUrl()
 
         setupListeners()
@@ -45,17 +44,11 @@ class LoginActivity : AppCompatActivity() {
         }
     }
 
-    /**
-     * Inicializa la URL base desde SharedPreferences
-     * Si no existe, guarda la URL por defecto actual
-     */
     private fun initializeBaseUrl() {
         val savedUrl = sessionManager.getStoredUrl()
         if (!savedUrl.isNullOrEmpty()) {
-            // Hay una URL guardada, usarla
             Constants.BASE_URL = savedUrl
         } else {
-            // No hay URL guardada, guardar la actual como default
             sessionManager.saveUrl(Constants.BASE_URL)
         }
     }

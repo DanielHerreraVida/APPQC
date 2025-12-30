@@ -244,10 +244,15 @@ class QCInspectionActivity : AppCompatActivity() {
                         if (columnCount > 0) setMargins(8, 0, 0, 0)
                     }
                     layoutParams = params
+                    isClickable = true
+                    isFocusable = true
+                    setOnClickListener {
+                        showIssueDetailsDialog(issue)
+                    }
                 }
 
                 val issueText = TextView(this).apply {
-                    text = issue.descriptionIen
+                    text = issue.descriptionIes
                     textSize = 11f
                     setTextColor(android.graphics.Color.parseColor("#000000"))
                     setPadding(0, 0, 6, 0)
@@ -258,6 +263,9 @@ class QCInspectionActivity : AppCompatActivity() {
                         LinearLayout.LayoutParams.WRAP_CONTENT
                     ).apply {
                         weight = 1f
+                    }
+                    setOnClickListener {
+                        showIssueDetailsDialog(issue)
                     }
                 }
 
@@ -290,6 +298,7 @@ class QCInspectionActivity : AppCompatActivity() {
                     columnCount = 0
                 }
             }
+
             if (columnCount > 0 && currentRow != null) {
                 for (i in columnCount until maxColumns) {
                     val spacer = View(this).apply {
@@ -316,6 +325,33 @@ class QCInspectionActivity : AppCompatActivity() {
             }
             scrollIssues.layoutParams = layoutParams
         }
+    }
+    private fun showIssueDetailsDialog(issue: Entities.QCIssueResponse) {
+        val message = buildString {
+            appendLine("Category: ${issue.categoryI}")
+            appendLine()
+            appendLine("Description:")
+            appendLine(issue.descriptionIes)
+            if (issue.descriptionIen.isNotEmpty() && issue.descriptionIen != issue.descriptionIes) {
+                appendLine()
+                appendLine("English:")
+                appendLine(issue.descriptionIen)
+            }
+        }
+
+        AlertDialog.Builder(this)
+            .setTitle("Issue Details")
+            .setMessage(message)
+            .setPositiveButton("OK", null)
+            .setNeutralButton("Remove") { _, _ ->
+                // Opción para remover el issue desde el diálogo
+                val currentIssues = viewModel.selectedIssues.toMutableList()
+                currentIssues.remove(issue)
+                viewModel.selectedIssues = currentIssues
+                updateIssuesGrid()
+                Toast.makeText(this, "Issue removed", Toast.LENGTH_SHORT).show()
+            }
+            .show()
     }
     private fun setupObservers() {
         viewModel.boxInfo.observe(this) { box ->
@@ -434,7 +470,7 @@ class QCInspectionActivity : AppCompatActivity() {
                         viewModel.selectedActions = selectedActions
 
                         TVNotificationChoosed.text = if (selectedActions.isNotEmpty())
-                            selectedActions.joinToString(", ") { it.descriptionAen }
+                            selectedActions.joinToString(", ") { it.descriptionAes }
                         else
                             "0 Items."
 
@@ -463,7 +499,7 @@ class QCInspectionActivity : AppCompatActivity() {
                         viewModel.selectedActions = selectedActions
 
                         TVActionChoosed.text = if (selectedActions.isNotEmpty())
-                            selectedActions.joinToString(", ") { it.descriptionAen }
+                            selectedActions.joinToString(", ") { it.descriptionAes }
                         else
                             "0 Items."
 
@@ -533,16 +569,18 @@ class QCInspectionActivity : AppCompatActivity() {
             val awbNum = viewModel.boxInfo.value?.awbNo ?: ""
             val telexNum = viewModel.boxInfo.value?.telexNum ?: ""
 //            val num = viewModel.boxInfo.value?.num?.toIntOrNull() ?: 0
+            val issueCs = issues.joinToString(",") { it.descriptionIes }
+            val actionCs = actions.joinToString(",") { it.descriptionAes }
 
             val num = GlobalOrder.getBxNUM()?.toIntOrNull()
                 ?: viewModel.boxInfo.value?.num?.toIntOrNull() ?: 0
             val qaInsp = UserSession.getUsername()
 
             val inspectStatus = when {
-                isAccepted -> "1"
-                isRejected -> "0"
-                isRelease -> "2"
-                else -> "0"
+                isAccepted -> 1
+                isRejected -> 0
+                isRelease -> 2
+                else -> 0
             }
 //            val inspectStatus = if (isAccepted) "1" else "0"
             val issueC = issues.joinToString(",") { it.idIssue }
@@ -557,8 +595,8 @@ class QCInspectionActivity : AppCompatActivity() {
                 appendLine("NUM: $num")
                 appendLine("PHOTOS: ${photos.size}")
                 appendLine("VIDEOS: ${videos.size}")
-                appendLine("ISSUES: $issueC")
-                appendLine("ACTIONS: $actionC")
+                appendLine("ISSUES: $issueCs")
+                appendLine("ACTIONS: $actionCs")
                 appendLine("DESCRIPTION: $issueDescription")
                 appendLine("STATUS: ${when {
                     isAccepted -> "QC NOTIFICATION"
@@ -697,7 +735,7 @@ class QCInspectionActivity : AppCompatActivity() {
                 preselected = viewModel.selectedIssues
             ) { selected ->
                 viewModel.selectedIssues = selected
-                updateIssuesGrid()  // ← SOLO CAMBIAR ESTA LÍNEA (antes era TVIssueChoosed.text = ...)
+                updateIssuesGrid()
             }.show()
         }
         btnActions.setOnClickListener {
@@ -714,7 +752,7 @@ class QCInspectionActivity : AppCompatActivity() {
             ) { selected ->
                 viewModel.selectedActions = selected
                 if (selected.isNotEmpty()) {
-                    TVActionChoosed.text = selected.joinToString(", ") { it.descriptionAen }
+                    TVActionChoosed.text = selected.joinToString(", ") { it.descriptionAes }
                 } else {
                     TVActionChoosed.text = "No selection"
                 }
@@ -735,7 +773,7 @@ class QCInspectionActivity : AppCompatActivity() {
             ) { selected ->
                 viewModel.selectedActions = selected
                 if (selected.isNotEmpty()) {
-                    TVNotificationChoosed.text = selected.joinToString(", ") { it.descriptionAen }
+                    TVNotificationChoosed.text = selected.joinToString(", ") { it.descriptionAes }
                 } else {
                     TVNotificationChoosed.text = "No selection"
                 }
@@ -846,6 +884,8 @@ class QCInspectionActivity : AppCompatActivity() {
             val photos = viewModel.photoPaths
             val videos = viewModel.videoPaths
             val selectedBoxes = viewModel.selectedBoxes
+            val issueCs = issues.joinToString(",") { it.descriptionIes }
+            val actionCs = actions.joinToString(",") { it.descriptionAes }
 
             val ordNum = viewModel.boxInfo.value?.numOrd?.toString()?.toIntOrNull() ?: 0
 //            val awbNum = viewModel.boxInfo.value?.awbNo?.toIntOrNull() ?: 0
@@ -902,8 +942,8 @@ class QCInspectionActivity : AppCompatActivity() {
                 appendLine("NUM: $num")
                 appendLine("PHOTOS: ${photos.size}")
                 appendLine("VIDEOS: ${videos.size}")
-                appendLine("ISSUES: $issueC")
-                appendLine("ACTIONS: $actionC")
+                appendLine("ISSUES: $issueCs")
+                appendLine("ACTIONS: $actionCs")
                 appendLine("DESCRIPTION: $issueDescription")
                 appendLine("STATUS: ${if (isAccepted) "QC NOTIFICATION" else "QC LOCAL"}")
             }

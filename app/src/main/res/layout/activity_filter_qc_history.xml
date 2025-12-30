@@ -34,28 +34,41 @@
                     android:textColor="@color/black"
                     android:layout_marginBottom="16dp" />
 
+                <!-- QA Inspector -->
                 <CheckBox
-                    android:id="@+id/checkboxAuthorAll"
+                    android:id="@+id/checkboxQaInspectorAll"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="All Inspectors"
+                    android:text="All QA Inspectors"
                     android:textSize="14sp" />
 
-                <com.google.android.material.textfield.TextInputLayout
+                <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginBottom="12dp"
-                    android:hint="Author"
-                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu">
+                    android:orientation="horizontal"
+                    android:layout_marginBottom="12dp">
 
-                    <AutoCompleteTextView
-                        android:id="@+id/spinnerAuthor"
-                        android:layout_width="match_parent"
+                    <TextView
+                        android:id="@+id/tvQaInspectorChoosed"
+                        android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        android:inputType="none"
-                        android:textSize="16sp" />
-                </com.google.android.material.textfield.TextInputLayout>
+                        android:layout_weight="1"
+                        android:text=""
+                        android:textSize="14sp"
+                        android:padding="12dp"
+                        android:background="@drawable/border_background"
+                        android:hint="No QA Inspectors selected" />
 
+                    <Button
+                        android:id="@+id/btnQaInspector"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="8dp"
+                        android:text="Select"
+                        style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
+                </LinearLayout>
+
+                <!-- Growers -->
                 <CheckBox
                     android:id="@+id/checkboxGrowersAll"
                     android:layout_width="match_parent"
@@ -89,6 +102,7 @@
                         style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
                 </LinearLayout>
 
+                <!-- Customers -->
                 <CheckBox
                     android:id="@+id/checkboxCustomersAll"
                     android:layout_width="match_parent"
@@ -122,6 +136,7 @@
                         style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
                 </LinearLayout>
 
+                <!-- Inspection Status -->
                 <CheckBox
                     android:id="@+id/checkboxInspectionStatusAll"
                     android:layout_width="match_parent"
@@ -150,14 +165,16 @@
                         android:layout_weight="1"
                         android:text="Rejected" />
                 </RadioGroup>
+                <!-- Barcodes Card -->
+                <!-- Barcodes Card -->
                 <com.google.android.material.card.MaterialCardView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginBottom="16dp"
-                    app:cardCornerRadius="8dp"
-                    app:cardElevation="2dp"
-                    app:strokeWidth="1dp"
-                    app:strokeColor="#E0E0E0">
+                    android:layout_marginBottom="12dp"
+                    app:cardCornerRadius="12dp"
+                    app:cardElevation="0dp"
+                    app:strokeWidth="0dp"
+                    app:cardBackgroundColor="#FFFFFF">
 
                     <LinearLayout
                         android:layout_width="match_parent"
@@ -173,6 +190,7 @@
                             android:textStyle="bold"
                             android:textColor="#212121"
                             android:layout_marginBottom="12dp" />
+
                         <com.google.android.material.textfield.TextInputLayout
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
@@ -202,11 +220,27 @@
                             </com.google.android.material.textfield.TextInputEditText>
                         </com.google.android.material.textfield.TextInputLayout>
 
+                        <!-- ✅ Nuevo LinearLayout con 3 botones -->
                         <LinearLayout
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:orientation="horizontal"
                             android:layout_marginBottom="12dp">
+
+                            <!-- ✅ NUEVO: Botón Select Barcodes -->
+                            <com.google.android.material.button.MaterialButton
+                                android:id="@+id/btnSelectBarcodes"
+                                android:layout_width="0dp"
+                                android:layout_height="48dp"
+                                android:layout_weight="1"
+                                android:text="Select"
+                                android:textColor="#FFFFFF"
+                                android:backgroundTint="#2196F3"
+                                app:iconTint="#FFFFFF"
+                                app:cornerRadius="8dp"
+                                android:textAllCaps="false"
+                                android:textSize="15sp"
+                                android:layout_marginEnd="6dp" />
 
                             <com.google.android.material.button.MaterialButton
                                 android:id="@+id/btnScanBarcode"
@@ -216,12 +250,12 @@
                                 android:text="Scan"
                                 android:textColor="#FFFFFF"
                                 android:backgroundTint="#FF9800"
-                                app:icon="@drawable/baseline_qr_code_scanner_24"
                                 app:iconTint="#FFFFFF"
                                 app:cornerRadius="8dp"
                                 android:textAllCaps="false"
                                 android:textSize="15sp"
-                                android:layout_marginEnd="8dp" />
+                                android:layout_marginStart="2dp"
+                                android:layout_marginEnd="6dp" />
 
                             <com.google.android.material.button.MaterialButton
                                 android:id="@+id/btnClearBarcodes"
@@ -235,7 +269,9 @@
                                 app:strokeWidth="1dp"
                                 app:cornerRadius="8dp"
                                 android:textAllCaps="false"
-                                android:textSize="15sp" />
+                                android:textSize="15sp"
+                                android:layout_marginStart="2dp" />
+
                         </LinearLayout>
 
                         <LinearLayout
@@ -280,9 +316,11 @@
                                     android:layout_marginTop="4dp" />
                             </LinearLayout>
                         </LinearLayout>
+
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
 
+                <!-- AWB - Order Numbers -->
                 <com.google.android.material.card.MaterialCardView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -373,6 +411,8 @@
                         </LinearLayout>
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
+
+                <!-- Dates -->
                 <CheckBox
                     android:id="@+id/checkboxInspectionDateAll"
                     android:layout_width="match_parent"
@@ -419,6 +459,7 @@
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
+        <!-- Bottom Buttons -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"

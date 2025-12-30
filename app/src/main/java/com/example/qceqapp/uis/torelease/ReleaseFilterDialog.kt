@@ -3,22 +3,22 @@ package com.example.qceqapp.uis.torelease
 import android.app.DatePickerDialog
 import android.app.Dialog
 import android.content.Context
+import android.view.View
 import android.view.WindowManager
 import android.view.inputmethod.EditorInfo
-import android.widget.CheckBox
-import android.widget.EditText
-import android.widget.LinearLayout
-import android.widget.TextView
+import android.widget.*
+import androidx.core.view.isVisible
 import com.example.qceqapp.R
 import com.google.android.material.button.MaterialButton
-import com.google.android.material.textfield.TextInputEditText
 import java.text.SimpleDateFormat
 import java.util.*
 
 class ReleaseFilterDialog(
     private val context: Context,
     private val allUsers: List<String>,
+    private val allBoxes: List<String>,
     private val currentFilters: FilterOptions,
+    private val isPendingView: Boolean,
     private val onApplyFilters: (FilterOptions) -> Unit,
     private val onScanRequested: () -> Unit
 ) {
@@ -26,11 +26,12 @@ class ReleaseFilterDialog(
     private var selectedUsers = currentFilters.selectedUsers.toMutableSet()
     private var startDate: Date? = currentFilters.startDate
     private var endDate: Date? = currentFilters.endDate
-    private var scannedBoxes = currentFilters.scannedBoxes.toMutableList()
+    private var selectedBoxes = currentFilters.scannedBoxes.toMutableSet()
     private var dialog: Dialog? = null
 
     private lateinit var cbDateAll: CheckBox
     private lateinit var cbUsersAll: CheckBox
+    private lateinit var cbBoxesAll: CheckBox
     private lateinit var tvStartDate: TextView
     private lateinit var tvEndDate: TextView
     private lateinit var tvUsersSelected: TextView
@@ -42,7 +43,11 @@ class ReleaseFilterDialog(
     private lateinit var etBoxSearch: EditText
     private lateinit var tvBoxesCount: TextView
     private lateinit var tvBoxesList: TextView
+    private lateinit var spinnerBoxSelector: Spinner
+    private lateinit var btnScanBox: MaterialButton
 
+    private lateinit var llDateSection: View
+    private lateinit var llUsersSection: View
     private val userCheckBoxes = mutableListOf<CheckBox>()
 
     fun show() {
@@ -54,40 +59,51 @@ class ReleaseFilterDialog(
                 WindowManager.LayoutParams.MATCH_PARENT,
                 WindowManager.LayoutParams.MATCH_PARENT
             )
+            window?.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN)
         }
 
         initializeViews(dialogView)
-        setupDateSection()
-        setupUsersSection()
+        configureSectionsVisibility()
+
+        if (!isPendingView) {
+            setupDateSection()
+            setupUsersSection()
+        }
         setupBoxSection()
         setupBottomButtons()
         updateFilterCount()
 
-        // Solicitar foco en el EditText de búsqueda de boxes
         etBoxSearch.postDelayed({
             etBoxSearch.requestFocus()
-            val imm = context.getSystemService(Context.INPUT_METHOD_SERVICE)
-                    as? android.view.inputmethod.InputMethodManager
-            imm?.showSoftInput(etBoxSearch, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
-        }, 300)
+        }, 100)
 
         dialog?.show()
     }
 
     fun addScannedBox(boxId: String) {
         val trimmedBox = boxId.trim()
-        if (trimmedBox.isNotEmpty() && !scannedBoxes.contains(trimmedBox)) {
-            scannedBoxes.add(trimmedBox)
+        if (trimmedBox.isNotEmpty() && !selectedBoxes.contains(trimmedBox)) {
+            selectedBoxes.add(trimmedBox)
+            cbBoxesAll.isChecked = false
             updateBoxesText()
             updateFilterCount()
             etBoxSearch.setText("")
+
+            etBoxSearch.postDelayed({
+                etBoxSearch.requestFocus()
+            }, 100)
         }
     }
 
-    private fun initializeViews(view: android.view.View) {
+    private fun initializeViews(view: View) {
         tvFilterCount = view.findViewById(R.id.tvFilterCount)
+
+        llDateSection = view.findViewById(R.id.llDateSection)
+        llUsersSection = view.findViewById(R.id.llUsersSection)
+
         cbDateAll = view.findViewById(R.id.cbDateAll)
         cbUsersAll = view.findViewById(R.id.cbUsersAll)
+        cbBoxesAll = view.findViewById(R.id.cbBoxesAll)
         tvStartDate = view.findViewById(R.id.tvStartDate)
         tvEndDate = view.findViewById(R.id.tvEndDate)
         tvUsersSelected = view.findViewById(R.id.tvUsersSelected)
@@ -98,39 +114,43 @@ class ReleaseFilterDialog(
         etBoxSearch = view.findViewById(R.id.etBoxSearch)
         tvBoxesCount = view.findViewById(R.id.tvBoxesCount)
         tvBoxesList = view.findViewById(R.id.tvBoxesList)
+        spinnerBoxSelector = view.findViewById(R.id.spinnerBoxSelector)
+        btnScanBox = view.findViewById(R.id.btnScanBox)
     }
 
-    private fun setupDateSection() {
-        // Configurar checkbox "All" para fechas
-        cbDateAll.setOnCheckedChangeListener { _, isChecked ->
-            btnSelectStartDate.isEnabled = !isChecked
-            btnSelectEndDate.isEnabled = !isChecked
-            btnClearDates.isEnabled = !isChecked
-            tvStartDate.isEnabled = !isChecked
-            tvEndDate.isEnabled = !isChecked
+    private fun configureSectionsVisibility() {
+        if (isPendingView) {
+            llDateSection.isVisible = false
+            llUsersSection.isVisible = false
+        } else {
+            llDateSection.isVisible = true
+            llUsersSection.isVisible = true
+        }
+    }
 
+
+    private fun setupDateSection() {
+        updateDateDisplay(tvStartDate, startDate, "Start Date: ")
+        updateDateDisplay(tvEndDate, endDate, "End Date: ")
+
+        cbDateAll.isChecked = startDate == null && endDate == null
+        updateDateButtonsAppearance()
+
+        cbDateAll.setOnCheckedChangeListener { _, isChecked ->
             if (isChecked) {
                 startDate = null
                 endDate = null
                 updateDateDisplay(tvStartDate, null, "Start Date: ")
                 updateDateDisplay(tvEndDate, null, "End Date: ")
             }
+            updateDateButtonsAppearance()
             updateFilterCount()
         }
 
-        // Configurar fechas actuales
-        updateDateDisplay(tvStartDate, startDate, "Start Date: ")
-        updateDateDisplay(tvEndDate, endDate, "End Date: ")
-
-        // Si hay fechas seleccionadas, desmarcar "All"
-        if (startDate != null || endDate != null) {
-            cbDateAll.isChecked = false
-        }
-
-        // Botón para seleccionar fecha de inicio
         btnSelectStartDate.setOnClickListener {
-            // Auto-desmarcar "All" cuando se selecciona una fecha
-            cbDateAll.isChecked = false
+            if (cbDateAll.isChecked) {
+                cbDateAll.isChecked = false
+            }
 
             showDatePicker { date ->
                 startDate = date
@@ -139,10 +159,10 @@ class ReleaseFilterDialog(
             }
         }
 
-        // Botón para seleccionar fecha de fin
         btnSelectEndDate.setOnClickListener {
-            // Auto-desmarcar "All" cuando se selecciona una fecha
-            cbDateAll.isChecked = false
+            if (cbDateAll.isChecked) {
+                cbDateAll.isChecked = false
+            }
 
             showDatePicker { date ->
                 endDate = date
@@ -151,18 +171,24 @@ class ReleaseFilterDialog(
             }
         }
 
-        // Botón para limpiar fechas
         btnClearDates.setOnClickListener {
             startDate = null
             endDate = null
             updateDateDisplay(tvStartDate, null, "Start Date: ")
             updateDateDisplay(tvEndDate, null, "End Date: ")
             cbDateAll.isChecked = true
+            updateFilterCount()
         }
     }
 
+    private fun updateDateButtonsAppearance() {
+        val isAllChecked = cbDateAll.isChecked
+        btnSelectStartDate.alpha = if (isAllChecked) 0.5f else 1.0f
+        btnSelectEndDate.alpha = if (isAllChecked) 0.5f else 1.0f
+        btnClearDates.alpha = if (isAllChecked) 0.5f else 1.0f
+    }
+
     private fun setupUsersSection() {
-        // Configurar checkbox "All" para usuarios
         cbUsersAll.setOnCheckedChangeListener { _, isChecked ->
             userCheckBoxes.forEach { it.isEnabled = !isChecked }
             tvUsersSelected.isEnabled = !isChecked
@@ -175,7 +201,6 @@ class ReleaseFilterDialog(
             updateFilterCount()
         }
 
-        // Crear checkboxes para usuarios
         userCheckBoxes.clear()
         allUsers.sorted().forEach { user ->
             val checkBox = CheckBox(context).apply {
@@ -188,11 +213,9 @@ class ReleaseFilterDialog(
                 setOnCheckedChangeListener { _, isChecked ->
                     if (isChecked) {
                         selectedUsers.add(user)
-                        // Auto-desmarcar "All" cuando se selecciona un usuario
                         cbUsersAll.isChecked = false
                     } else {
                         selectedUsers.remove(user)
-                        // Si se deseleccionan todos, marcar "All"
                         if (selectedUsers.isEmpty()) {
                             cbUsersAll.isChecked = true
                         }
@@ -205,7 +228,6 @@ class ReleaseFilterDialog(
             usersContainer.addView(checkBox)
         }
 
-        // Si hay usuarios seleccionados, desmarcar "All"
         if (selectedUsers.isNotEmpty()) {
             cbUsersAll.isChecked = false
         }
@@ -214,7 +236,70 @@ class ReleaseFilterDialog(
     }
 
     private fun setupBoxSection() {
-        // Configurar EditText para detectar Enter
+        cbBoxesAll.isChecked = selectedBoxes.isEmpty()
+        updateBoxControlsAppearance()
+
+        cbBoxesAll.setOnCheckedChangeListener { _, isChecked ->
+            if (isChecked) {
+                selectedBoxes.clear()
+                spinnerBoxSelector.setSelection(0)
+                etBoxSearch.setText("")
+                updateBoxesText()
+            }
+            updateBoxControlsAppearance()
+            updateFilterCount()
+
+            if (!isChecked) {
+                etBoxSearch.postDelayed({
+                    etBoxSearch.requestFocus()
+                }, 100)
+            }
+        }
+
+        val boxOptions = mutableListOf("-- Select a box --").apply {
+            addAll(allBoxes.sorted())
+        }
+
+        val spinnerAdapter = ArrayAdapter(
+            context,
+            android.R.layout.simple_spinner_item,
+            boxOptions
+        ).apply {
+            setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        }
+
+        spinnerBoxSelector.adapter = spinnerAdapter
+
+        spinnerBoxSelector.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+                if (position > 0) {
+                    if (cbBoxesAll.isChecked) {
+                        cbBoxesAll.isChecked = false
+                    }
+
+                    val selectedBox = boxOptions[position]
+                    if (!selectedBoxes.contains(selectedBox)) {
+                        selectedBoxes.add(selectedBox)
+                        updateBoxesText()
+                        updateFilterCount()
+                        spinnerBoxSelector.setSelection(0)
+
+                        etBoxSearch.postDelayed({
+                            etBoxSearch.requestFocus()
+                        }, 100)
+                    }
+                }
+            }
+
+            override fun onNothingSelected(parent: AdapterView<*>?) {}
+        }
+
+        etBoxSearch.setOnFocusChangeListener { _, hasFocus ->
+            if (hasFocus && cbBoxesAll.isChecked) {
+                cbBoxesAll.isChecked = false
+            }
+        }
+
         etBoxSearch.setOnEditorActionListener { v, actionId, event ->
             val isEnterPressed = event?.keyCode == android.view.KeyEvent.KEYCODE_ENTER &&
                     event.action == android.view.KeyEvent.ACTION_DOWN
@@ -232,41 +317,47 @@ class ReleaseFilterDialog(
             false
         }
 
-        // Botón Scan
-        dialog?.findViewById<MaterialButton>(R.id.btnScanBox)?.setOnClickListener {
+        btnScanBox.setOnClickListener {
+            if (cbBoxesAll.isChecked) {
+                cbBoxesAll.isChecked = false
+            }
             onScanRequested()
         }
 
-        // Botón Clear Boxes
         dialog?.findViewById<MaterialButton>(R.id.btnClearBoxes)?.setOnClickListener {
-            scannedBoxes.clear()
+            selectedBoxes.clear()
+            spinnerBoxSelector.setSelection(0)
+            etBoxSearch.setText("")
+            cbBoxesAll.isChecked = true
             updateBoxesText()
             updateFilterCount()
-            etBoxSearch.requestFocus()
         }
 
-        // Actualizar display inicial
         updateBoxesText()
     }
 
+    private fun updateBoxControlsAppearance() {
+        val isAllChecked = cbBoxesAll.isChecked
+        spinnerBoxSelector.alpha = if (isAllChecked) 0.5f else 1.0f
+        etBoxSearch.alpha = if (isAllChecked) 0.5f else 1.0f
+        btnScanBox.alpha = if (isAllChecked) 0.5f else 1.0f
+    }
+
     private fun setupBottomButtons() {
-        // Botón Clear
         dialog?.findViewById<MaterialButton>(R.id.btnClearFilters)?.setOnClickListener {
             clearAllFilters()
         }
 
-        // Botón Cancel
         dialog?.findViewById<MaterialButton>(R.id.btnCancel)?.setOnClickListener {
             dialog?.dismiss()
         }
 
-        // Botón Apply
         dialog?.findViewById<MaterialButton>(R.id.btnApplyFilters)?.setOnClickListener {
             val filters = FilterOptions(
-                selectedUsers = selectedUsers.toSet(),
-                startDate = startDate,
-                endDate = endDate,
-                scannedBoxes = scannedBoxes.toList()
+                selectedUsers = if (isPendingView) emptySet() else selectedUsers.toSet(),
+                startDate = if (isPendingView) null else startDate,
+                endDate = if (isPendingView) null else endDate,
+                scannedBoxes = selectedBoxes.toList()
             )
             onApplyFilters(filters)
             dialog?.dismiss()
@@ -274,25 +365,30 @@ class ReleaseFilterDialog(
     }
 
     private fun clearAllFilters() {
-        // Limpiar fechas
-        startDate = null
-        endDate = null
-        updateDateDisplay(tvStartDate, null, "Start Date: ")
-        updateDateDisplay(tvEndDate, null, "End Date: ")
-        cbDateAll.isChecked = true
+        if (!isPendingView) {
+            startDate = null
+            endDate = null
+            updateDateDisplay(tvStartDate, null, "Start Date: ")
+            updateDateDisplay(tvEndDate, null, "End Date: ")
+            cbDateAll.isChecked = true
 
-        // Limpiar usuarios
-        selectedUsers.clear()
-        userCheckBoxes.forEach { it.isChecked = false }
-        cbUsersAll.isChecked = true
-        updateUsersSelectedText()
+            selectedUsers.clear()
+            userCheckBoxes.forEach { it.isChecked = false }
+            cbUsersAll.isChecked = true
+            updateUsersSelectedText()
+        }
 
-        // Limpiar boxes
-        scannedBoxes.clear()
+        selectedBoxes.clear()
+        spinnerBoxSelector.setSelection(0)
         etBoxSearch.setText("")
+        cbBoxesAll.isChecked = true
         updateBoxesText()
 
         updateFilterCount()
+
+        etBoxSearch.postDelayed({
+            etBoxSearch.requestFocus()
+        }, 100)
     }
 
     private fun showDatePicker(onDateSelected: (Date) -> Unit) {
@@ -329,30 +425,32 @@ class ReleaseFilterDialog(
 
     private fun updateBoxesText() {
         tvBoxesCount.text = when {
-            scannedBoxes.isEmpty() -> "No boxes scanned"
-            scannedBoxes.size == 1 -> "1 box scanned"
-            else -> "${scannedBoxes.size} boxes scanned"
+            selectedBoxes.isEmpty() -> "No boxes selected"
+            selectedBoxes.size == 1 -> "1 box selected"
+            else -> "${selectedBoxes.size} boxes selected"
         }
 
-        tvBoxesList.text = if (scannedBoxes.isEmpty()) {
+        tvBoxesList.text = if (selectedBoxes.isEmpty()) {
             ""
         } else {
-            scannedBoxes.joinToString(", ")
+            selectedBoxes.sorted().joinToString(", ")
         }
     }
 
     private fun updateFilterCount() {
         var count = 0
 
-        if (!cbDateAll.isChecked && (startDate != null || endDate != null)) {
-            count++
+        if (!isPendingView) {
+            if (!cbDateAll.isChecked && (startDate != null || endDate != null)) {
+                count++
+            }
+
+            if (!cbUsersAll.isChecked && selectedUsers.isNotEmpty()) {
+                count++
+            }
         }
 
-        if (!cbUsersAll.isChecked && selectedUsers.isNotEmpty()) {
-            count++
-        }
-
-        if (scannedBoxes.isNotEmpty()) {
+        if (!cbBoxesAll.isChecked && selectedBoxes.isNotEmpty()) {
             count++
         }
 

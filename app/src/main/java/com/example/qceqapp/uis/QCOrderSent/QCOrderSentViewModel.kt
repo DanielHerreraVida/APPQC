@@ -107,8 +107,8 @@ class QCOrderSentViewModel : ViewModel() {
         barcodesToI: String
     ): Result<String> {
         return try {
-
-            val result = service.sendQCHistorySent(
+            val result = service.sendBoxToSent(
+//                val result = service.sendQCHistorySent(
                 idBox = idBox,
                 ordNum = ordNum,
                 awbNum = awbNum,

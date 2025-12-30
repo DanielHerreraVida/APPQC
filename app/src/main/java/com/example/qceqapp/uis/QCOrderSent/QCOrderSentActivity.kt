@@ -300,10 +300,16 @@ class QCOrderSentActivity : AppCompatActivity() {
                         if (columnCount > 0) setMargins(8, 0, 0, 0)
                     }
                     layoutParams = params
+
+                    isClickable = true
+                    isFocusable = true
+                    setOnClickListener {
+                        showIssueDetailsDialog(issue)
+                    }
                 }
 
                 val issueText = TextView(this).apply {
-                    text = issue.descriptionIen
+                    text = issue.descriptionIes
                     textSize = 11f
                     setTextColor(android.graphics.Color.parseColor("#000000"))
                     setPadding(0, 0, 6, 0)
@@ -314,6 +320,9 @@ class QCOrderSentActivity : AppCompatActivity() {
                         LinearLayout.LayoutParams.WRAP_CONTENT
                     ).apply {
                         weight = 1f
+                    }
+                    setOnClickListener {
+                        showIssueDetailsDialog(issue)
                     }
                 }
 
@@ -346,6 +355,7 @@ class QCOrderSentActivity : AppCompatActivity() {
                     columnCount = 0
                 }
             }
+
             if (columnCount > 0 && currentRow != null) {
                 for (i in columnCount until maxColumns) {
                     val spacer = View(this).apply {
@@ -373,6 +383,33 @@ class QCOrderSentActivity : AppCompatActivity() {
             scrollIssues.layoutParams = layoutParams
         }
     }
+
+    private fun showIssueDetailsDialog(issue: Entities.QCIssueResponse) {
+        val message = buildString {
+            appendLine("Category: ${issue.categoryI}")
+            appendLine()
+            appendLine("Description:")
+            appendLine(issue.descriptionIes)
+            if (issue.descriptionIen.isNotEmpty() && issue.descriptionIen != issue.descriptionIes) {
+                appendLine()
+                appendLine("English:")
+                appendLine(issue.descriptionIen)
+            }
+        }
+
+        AlertDialog.Builder(this)
+            .setTitle("Issue Details")
+            .setMessage(message)
+            .setPositiveButton("OK", null)
+            .setNeutralButton("Remove") { _, _ ->
+                val currentIssues = viewModel.selectedIssues.toMutableList()
+                currentIssues.remove(issue)
+                viewModel.selectedIssues = currentIssues
+                updateIssuesGrid()
+                Toast.makeText(this, "Issue removed", Toast.LENGTH_SHORT).show()
+            }
+            .show()
+    }
     private fun loadSavedBoxData(savedBox: Entities.SavedBoxResponse) {
         val issues = viewModel.qcIssues.value
         val actions = viewModel.qcActions.value
@@ -390,13 +427,11 @@ class QCOrderSentActivity : AppCompatActivity() {
         try {
             var qtyMedia = 0
 
-            // === FOTOS ===
             if (savedBox.imagesList.isNotEmpty()) {
                 viewModel.photoPaths = savedBox.imagesList.toMutableList()
                 qtyMedia += savedBox.imagesList.size
             }
 
-            // === VIDEOS ===
             if (savedBox.videosList.isNotEmpty()) {
                 viewModel.videoPaths = savedBox.videosList.toMutableList()
                 qtyMedia += savedBox.videosList.size
@@ -404,7 +439,6 @@ class QCOrderSentActivity : AppCompatActivity() {
 
             cameraBadge.text = qtyMedia.toString()
 
-            // === ISSUES ===
             if (savedBox.boxIssue.isNotEmpty()) {
                 val issueIds = savedBox.boxIssue.split(",")
                 val selectedIssues = issues.filter { issue ->
@@ -413,12 +447,10 @@ class QCOrderSentActivity : AppCompatActivity() {
                 viewModel.selectedIssues = selectedIssues
                 updateIssuesGrid()
             } else {
-                // Si no hay issues, limpia el contenedor
                 viewModel.selectedIssues = emptyList()
                 updateIssuesGrid()
             }
 
-            // === DESCRIPCIÓN ===
             if (savedBox.boxIssueDescript.isNotEmpty()) {
                 descriptionIssue.setText(savedBox.boxIssueDescript)
                 val wordCount = countWords(savedBox.boxIssueDescript)
@@ -428,9 +460,8 @@ class QCOrderSentActivity : AppCompatActivity() {
                 tvTotalDescript.text = ""
             }
 
-            // === STATUS QA ===
             when (savedBox.qaInspectionStatus) {
-                "1" -> { // QC Notification
+                "1" -> {
                     rB_QCNotification.isChecked = true
                     rB_QCAction.isChecked = false
 
@@ -449,7 +480,7 @@ class QCOrderSentActivity : AppCompatActivity() {
                         viewModel.selectedActions = selectedActions
 
                         TVNotificationChoosed.text = if (selectedActions.isNotEmpty())
-                            selectedActions.joinToString(", ") { it.descriptionAen }
+                            selectedActions.joinToString(", ") { it.descriptionAes }
                         else
                             "0 Items."
                     }
@@ -459,7 +490,7 @@ class QCOrderSentActivity : AppCompatActivity() {
                     btn_SendReport.isEnabled = true
                 }
 
-                "0" -> { // QC Action
+                "0" -> {
                     rB_QCAction.isChecked = true
                     rB_QCNotification.isChecked = false
 
@@ -478,7 +509,7 @@ class QCOrderSentActivity : AppCompatActivity() {
                         viewModel.selectedActions = selectedActions
 
                         TVActionChoosed.text = if (selectedActions.isNotEmpty())
-                            selectedActions.joinToString(", ") { it.descriptionAen }
+                            selectedActions.joinToString(", ") { it.descriptionAes }
                         else
                             "0 Items."
                     }
@@ -488,7 +519,7 @@ class QCOrderSentActivity : AppCompatActivity() {
                     btn_SendReport.isEnabled = true
                 }
 
-                else -> { // Estado desconocido
+                else -> {
                     btn_SendReport.isEnabled = false
                     tVAction.visibility = View.GONE
                     TVActionChoosed.visibility = View.GONE
@@ -538,7 +569,7 @@ class QCOrderSentActivity : AppCompatActivity() {
                 preselected = viewModel.selectedIssues
             ) { selected ->
                 viewModel.selectedIssues = selected
-                updateIssuesGrid()  // ← CAMBIAR ESTAS LÍNEAS
+                updateIssuesGrid()
             }.show()
         }
 
@@ -556,7 +587,7 @@ class QCOrderSentActivity : AppCompatActivity() {
             ) { selected ->
                 viewModel.selectedActions = selected
                 if (selected.isNotEmpty()) {
-                    TVActionChoosed.text = selected.joinToString(", ") { it.descriptionAen }
+                    TVActionChoosed.text = selected.joinToString(", ") { it.descriptionAes }
                 } else {
                     TVActionChoosed.text = "No selection"
                 }
@@ -577,7 +608,7 @@ class QCOrderSentActivity : AppCompatActivity() {
             ) { selected ->
                 viewModel.selectedActions = selected
                 if (selected.isNotEmpty()) {
-                    TVNotificationChoosed.text = selected.joinToString(", ") { it.descriptionAen }
+                    TVNotificationChoosed.text = selected.joinToString(", ") { it.descriptionAes }
                 } else {
                     TVNotificationChoosed.text = "No selection"
                 }
@@ -651,7 +682,10 @@ class QCOrderSentActivity : AppCompatActivity() {
 
         val inspectStatus = if (isAccepted) 1 else 0
         val issueC = issues.joinToString(",") { it.idIssue }
-        val actionC = actions.joinToString(",") { it.idAction }
+        val issueCs = issues.joinToString(",") { it.descriptionIes }
+          val actionC = actions.joinToString(",") { it.idAction }
+        val actionCs = actions.joinToString(",") { it.descriptionAes }
+
         val barcodesToI = selectedBoxes.joinToString(",") { it.barcode }
 
         val summary = buildString {
@@ -663,8 +697,8 @@ class QCOrderSentActivity : AppCompatActivity() {
             appendLine("NUM: $num")
             appendLine("PHOTOS: ${photos.size}")
             appendLine("VIDEOS: ${videos.size}")
-            appendLine("ISSUES: $issueC")
-            appendLine("ACTIONS: $actionC")
+            appendLine("ISSUES: $issueCs")
+            appendLine("ACTIONS: $actionCs")
             appendLine("DESCRIPTION: $issueDescription")
             appendLine("STATUS: ${if (isAccepted) "QC NOTIFICATION" else "QC LOCAL"}")
         }
@@ -725,7 +759,7 @@ class QCOrderSentActivity : AppCompatActivity() {
                                 }
 
                             } else {
-                                Log.d(TAG, "No compositions to save")
+                                Log.d(TAG, "No compositions to sent")
                             }
                             Toast.makeText(
                                 this@QCOrderSentActivity,
@@ -739,12 +773,12 @@ class QCOrderSentActivity : AppCompatActivity() {
                         } else {
                             Toast.makeText(
                                 this@QCOrderSentActivity,
-                                "Error saving item.",
+                                "Error sent item.",
                                 Toast.LENGTH_LONG
                             ).show()
                         }
                     } catch (e: Exception) {
-                        Log.e(TAG, "Error saving box: ${e.message}", e)
+                        Log.e(TAG, "Error sent box: ${e.message}", e)
                         Toast.makeText(
                             this@QCOrderSentActivity,
                             "Error: ${e.localizedMessage}",
@@ -778,7 +812,12 @@ class QCOrderSentActivity : AppCompatActivity() {
 
         val inspectStatus = if (isAccepted) 1 else 0
         val issueC = issues.joinToString(",") { it.idIssue }
+
+        val issueCs = issues.joinToString(",") { it.descriptionIes }
+
         val actionC = actions.joinToString(",") { it.idAction }
+
+        val actionCs = actions.joinToString(",") { it.descriptionAes }
         val barcodesToI = selectedBoxes.joinToString(",") { it.barcode }
 
         val summary = buildString {
@@ -790,8 +829,8 @@ class QCOrderSentActivity : AppCompatActivity() {
             appendLine("NUM: $num")
             appendLine("PHOTOS: ${photos.size}")
             appendLine("VIDEOS: ${videos.size}")
-            appendLine("ISSUES: $issueC")
-            appendLine("ACTIONS: $actionC")
+            appendLine("ISSUES: $issueCs")
+            appendLine("ACTIONS: $actionCs")
             appendLine("DESCRIPTION: $issueDescription")
             appendLine("STATUS: ${if (inspectStatus == 1) "QC NOTIFICATION" else "QC LOCAL"}")
         }
@@ -857,7 +896,7 @@ class QCOrderSentActivity : AppCompatActivity() {
                             }
                             Toast.makeText(
                                 this@QCOrderSentActivity,
-                                "Box sent successfully.",
+                                "Box save successfully.",
                                 Toast.LENGTH_LONG
                             ).show()
 

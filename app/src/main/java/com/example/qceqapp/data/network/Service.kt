@@ -1,6 +1,8 @@
 package com.example.qceqapp.data.network
 
 import com.example.qceqapp.data.model.Entities
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 class Service {
 
@@ -284,6 +286,31 @@ class Service {
             Result.failure(e)
         }
     }
+    suspend fun sendBoxToSent(
+        idBox: String,
+        ordNum: Int,
+        awbNum: String,
+        telexNum: String,
+        num: Int,
+        issueC: String,
+        actionC: String,
+        issueDes: String,
+        qaInsp: String,
+        listImages: List<String>,
+        listVideos: List<String>,
+        inspectStatus: Int,
+        barcodesToI: String
+    ): Result<Unit> {
+        return try {
+            restClient.sendBoxToSent(
+                idBox, ordNum, awbNum, telexNum, num,
+                issueC, actionC, issueDes, qaInsp,
+                listImages, listVideos, inspectStatus, barcodesToI
+            )
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
     suspend fun sendGroupInspection(
         inspections: String
     ): Result<String> {
@@ -344,5 +371,18 @@ class Service {
             Result.failure(e)
         }
     }
-
+    suspend fun releaseBoxesBatch(boxIds: List<Int>, user: String): Result<Entities.SimpleReleaseResponse> {
+        return try {
+            restClient.releaseBoxesBatch(boxIds, user)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+    suspend fun deleteReleasedBox(boxNumber: Int, username: String): Result<Entities.ReleaseBoxResponse> {
+        return try {
+            restClient.deleteReleasedBox(boxNumber, username)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
 }

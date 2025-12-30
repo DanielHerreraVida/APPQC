@@ -28,7 +28,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
 import java.io.File
-
+import com.example.qceqapp.uis.scanner.CameraActivity
 class QCEvidencePhotoFragment : Fragment() {
 
     private val viewModel: QCMediaViewModel by activityViewModels()
@@ -41,7 +41,6 @@ class QCEvidencePhotoFragment : Fragment() {
 
     private var imageUri: Uri? = null
 
-    // ✅ Launcher para solicitar permisos
     private val requestPermissionsLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
@@ -60,19 +59,35 @@ class QCEvidencePhotoFragment : Fragment() {
         }
     }
 
-    private val capturePhoto = registerForActivityResult(
-        ActivityResultContracts.StartActivityForResult()
-    ) { result ->
-        if (result.resultCode == Activity.RESULT_OK) {
-            val photoBitmap = result.data?.extras?.get("data") as? Bitmap
-            if (photoBitmap != null) {
-                uploadImageToServer(photoBitmap)
-            } else {
-                Toast.makeText(requireContext(), "Could not get the image", Toast.LENGTH_SHORT).show()
+//    private val capturePhoto = registerForActivityResult(
+//        ActivityResultContracts.StartActivityForResult()
+//    ) { result ->
+//        if (result.resultCode == Activity.RESULT_OK) {
+//            val photoBitmap = result.data?.extras?.get("data") as? Bitmap
+//            if (photoBitmap != null) {
+//                uploadImageToServer(photoBitmap)
+//            } else {
+//                Toast.makeText(requireContext(), "Could not get the image", Toast.LENGTH_SHORT).show()
+//            }
+//        }
+//    }
+private val capturePhoto = registerForActivityResult(
+    ActivityResultContracts.StartActivityForResult()
+) { result ->
+    if (result.resultCode == Activity.RESULT_OK) {
+        val imagePath = result.data?.getStringExtra(CameraActivity.EXTRA_IMAGE_PATH)
+        if (!imagePath.isNullOrEmpty()) {
+            val file = File(imagePath)
+            if (file.exists()) {
+                val bitmap = BitmapFactory.decodeFile(imagePath)
+                uploadImageToServer(bitmap)
+                file.delete() // Limpieza
             }
+        } else {
+            Toast.makeText(requireContext(), "Could not get the image", Toast.LENGTH_SHORT).show()
         }
     }
-
+}
     private val selectPhotos = registerForActivityResult(
         ActivityResultContracts.GetMultipleContents()
     ) { uris ->
@@ -89,7 +104,8 @@ class QCEvidencePhotoFragment : Fragment() {
         val btnCamera = view.findViewById<Button>(R.id.btn_Camera)
         val btnFiles = view.findViewById<Button>(R.id.btn_Files)
         val btnContinue = view.findViewById<Button>(R.id.btn_Continue)
-        val btnDeleteAll = view.findViewById<ImageButton>(R.id.btn_DeletePhLst)
+        val btnDeleteAll =  view.findViewById<Button>(R.id.btn_DeletePhLst)
+//            view.findViewById<ImageButton>(R.id.btn_DeletePhLst)
 
         counter = view.findViewById(R.id.tV_TotalImages)
         viewPager = view.findViewById(R.id.viewPagerPhotos)
@@ -127,12 +143,10 @@ class QCEvidencePhotoFragment : Fragment() {
             }
         })
 
-        // ✅ Verificar permisos antes de abrir cámara
         btnCamera.setOnClickListener {
             checkPermissionsAndOpenCamera()
         }
 
-        // ✅ Verificar permisos antes de seleccionar archivos
         btnFiles.setOnClickListener {
             checkPermissionsAndSelectFiles()
         }
@@ -176,15 +190,12 @@ class QCEvidencePhotoFragment : Fragment() {
         return view
     }
 
-    // ✅ Verificar permisos antes de abrir cámara
     private fun checkPermissionsAndOpenCamera() {
         when {
             PermissionHelper.hasAllPermissions(requireContext()) -> {
-                // Ya tiene todos los permisos
                 openCamera()
             }
             shouldShowRequestPermissionRationale(android.Manifest.permission.CAMERA) -> {
-                // Mostrar explicación
                 AlertDialog.Builder(requireContext())
                     .setTitle("Camera Permission Required")
                     .setMessage("Camera permission is needed to take photos for inspection. Please grant the permission to continue.")
@@ -195,21 +206,17 @@ class QCEvidencePhotoFragment : Fragment() {
                     .show()
             }
             else -> {
-                // Solicitar permisos directamente
                 requestPermissions()
             }
         }
     }
 
-    // ✅ Verificar permisos antes de seleccionar archivos
     private fun checkPermissionsAndSelectFiles() {
         when {
             PermissionHelper.hasAllPermissions(requireContext()) -> {
-                // Ya tiene todos los permisos
                 selectPhotos.launch("image/*")
             }
             else -> {
-                // Solicitar permisos
                 Toast.makeText(
                     requireContext(),
                     "Storage permissions are required to select photos",
@@ -220,24 +227,34 @@ class QCEvidencePhotoFragment : Fragment() {
         }
     }
 
-    // ✅ Solicitar permisos
     private fun requestPermissions() {
         requestPermissionsLauncher.launch(PermissionHelper.getRequiredPermissions())
     }
 
-    // ✅ Abrir cámara
+//    private fun openCamera() {
+//        try {
+//            val intent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
+//            if (intent.resolveActivity(requireActivity().packageManager) != null) {
+//                capturePhoto.launch(intent)
+//            } else {
+//                Toast.makeText(
+//                    requireContext(),
+//                    "No camera app found",
+//                    Toast.LENGTH_SHORT
+//                ).show()
+//            }
+//        } catch (e: Exception) {
+//            Toast.makeText(
+//                requireContext(),
+//                "Error opening camera: ${e.localizedMessage}",
+//                Toast.LENGTH_SHORT
+//            ).show()
+//        }
+//    }
     private fun openCamera() {
         try {
-            val intent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
-            if (intent.resolveActivity(requireActivity().packageManager) != null) {
-                capturePhoto.launch(intent)
-            } else {
-                Toast.makeText(
-                    requireContext(),
-                    "No camera app found",
-                    Toast.LENGTH_SHORT
-                ).show()
-            }
+            val intent = Intent(requireContext(), CameraActivity::class.java)
+            capturePhoto.launch(intent)
         } catch (e: Exception) {
             Toast.makeText(
                 requireContext(),
@@ -257,7 +274,6 @@ class QCEvidencePhotoFragment : Fragment() {
         progressBar = null
     }
 
-    // ... resto de métodos sin cambios (showDeleteSinglePhotoDialog, deleteSinglePhoto, etc.)
 
     private fun showDeleteSinglePhotoDialog(position: Int) {
         if (!isAdded) return

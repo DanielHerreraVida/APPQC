@@ -57,8 +57,10 @@ class ToInspectFragment : Fragment() {
 
     override fun onResume() {
         super.onResume()
+        isNavigatingToQCBoxes = false
+
         handleResume()
-        // Restaurar foco después de volver de otras pantallas
+
         binding.etSearch.postDelayed({
             binding.etSearch.requestFocus()
         }, 100)
@@ -80,24 +82,31 @@ class ToInspectFragment : Fragment() {
             showError("Error initializing view: ${e.localizedMessage}")
         }
     }
+
     private fun setupActivityResultLaunchers() {
         scannerLauncher = registerForActivityResult(
             ActivityResultContracts.StartActivityForResult()
         ) { result ->
             skipNextResume = true
             handleScanResult(result.resultCode, result.data?.getStringExtra("SCANNED_CODE"))
+
+            binding.etSearch.setText("")
             safeRequestFocus()
         }
+
         filtersLauncher = registerForActivityResult(
             ActivityResultContracts.StartActivityForResult()
         ) { result ->
+            Log.d(TAG, "Filters result: ${result.resultCode}")
             skipNextResume = true
             if (result.resultCode == Activity.RESULT_OK) {
                 handleFilterResult(result.data)
             }
             safeRequestFocus()
         }
+
     }
+
     private fun setupRecyclerView() {
         ordersAdapter = OrdersAdapter(
             orders = emptyList(),
@@ -118,7 +127,6 @@ class ToInspectFragment : Fragment() {
             btnFilter.setOnClickListener { openFiltersActivity() }
             btnScan.setOnClickListener { openScanner() }
             etSearch.setOnEditorActionListener { v, actionId, event ->
-                // Detectar Enter del teclado (PC o móvil)
                 val isEnterKey = event?.keyCode == android.view.KeyEvent.KEYCODE_ENTER
                 val isImeAction = actionId == android.view.inputmethod.EditorInfo.IME_ACTION_DONE ||
                         actionId == android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH ||
@@ -128,7 +136,6 @@ class ToInspectFragment : Fragment() {
                     val searchText = v.text.toString().trim()
                     if (searchText.isNotEmpty()) {
                         handleManualScan(searchText)
-                        // Limpiar el campo después de buscar
                         v.setText("")
                         true
                     } else {
@@ -157,7 +164,6 @@ class ToInspectFragment : Fragment() {
 
                     override fun afterTextChanged(s: android.text.Editable?) {
                         val text = s.toString().trim()
-                        // Si el texto termina con salto de línea (algunas pistolas agregan \n)
                         if (text.endsWith("\n") || text.endsWith("\r")) {
                             val cleanText = text.replace("\n", "").replace("\r", "").trim()
                             if (cleanText.isNotEmpty()) {
@@ -168,7 +174,6 @@ class ToInspectFragment : Fragment() {
                     }
                 })
 
-                // ✅ Asegurar que siempre tenga foco al iniciar
                 etSearch.requestFocus()
                 etSearch.post {
                     etSearch.requestFocus()
@@ -258,24 +263,42 @@ class ToInspectFragment : Fragment() {
             showMessage("No orders match the filters")
         }
     }
-    private fun handleScanResult(resultCode: Int, scannedCode: String?) {
-        when (resultCode) {
-            Activity.RESULT_OK -> {
-                if (!scannedCode.isNullOrEmpty()) {
-                    binding.etSearch.setText(scannedCode)
-                    handleManualScan(scannedCode)
-                } else {
-                    showError("No code detected. Please try again.")
-                }
-            }
-            Activity.RESULT_CANCELED -> {
-                Log.d(TAG, "Scan was canceled by user")
-            }
-            else -> {
-                showError("Scan canceled.")
+//    private fun handleScanResult(resultCode: Int, scannedCode: String?) {
+//        when (resultCode) {
+//            Activity.RESULT_OK -> {
+//                if (!scannedCode.isNullOrEmpty()) {
+//                    binding.etSearch.setText(scannedCode)
+//                    handleManualScan(scannedCode)
+//                } else {
+//                    showError("No code detected. Please try again.")
+//                }
+//            }
+//            Activity.RESULT_CANCELED -> {
+//                Log.d(TAG, "Scan was canceled by user")
+//            }
+//            else -> {
+//                showError("Scan canceled.")
+//            }
+//        }
+//    }
+private fun handleScanResult(resultCode: Int, scannedCode: String?) {
+    when (resultCode) {
+        Activity.RESULT_OK -> {
+            if (!scannedCode.isNullOrEmpty()) {
+                Log.d(TAG, "Scan successful: $scannedCode")
+                handleManualScan(scannedCode)
+            } else {
+                Log.w(TAG, "Scan returned OK but no code")
             }
         }
+        Activity.RESULT_CANCELED -> {
+            Log.d(TAG, "Scan was canceled by user")
+        }
+        else -> {
+            Log.w(TAG, "Unexpected scan result code: $resultCode")
+        }
     }
+}
 
     private fun handleFilterResult(data: Intent?) {
         val filterData = data?.getParcelableExtraCompat<Entities.FilterData>(
@@ -404,62 +427,76 @@ class ToInspectFragment : Fragment() {
         startActivity(intent)
     }
     private fun handleManualScan(scannedCode: String) {
-        if (isNavigatingToQCBoxes) {
-            Log.d(TAG, "Already navigating, ignoring scan")
+        val idBox = scannedCode.trim()
+
+        Log.d(TAG, "handleManualScan - idBox: $idBox, isNavigating: $isNavigatingToQCBoxes")
+
+        if (idBox.isEmpty()) {
+            showError("Invalid code")
             return
         }
 
-        val idBox = scannedCode.trim().takeIf { it.isNotEmpty() } ?: run {
-            showError("Invalid code.")
-            return
-        }
-
-        val matchingOrder = findOrderByBoxId(idBox)
-
-        if (matchingOrder != null) {
-            Log.d(TAG, "Found matching order locally: ${matchingOrder.orderNum}")
-            GlobalOrder.clear()
-            GlobalOrder.set(matchingOrder)
-            handleOrderClick(matchingOrder)
-            return
-        }
-
-        GlobalOrder.clear()
-
-        setLoading(true)
-
-        viewLifecycleOwner.lifecycleScope.launch {
-            try {
-                val service = com.example.qceqapp.data.network.Service()
-
-                if (!performBoxScan(service, idBox)) return@launch
-                if (!checkBoxExistence(service, idBox)) return@launch
-
-                navigateToQCBoxesSafely(idBox)
-
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                showError("Error: ${e.localizedMessage ?: "Unknown error"}")
-            } finally {
-                setLoading(false)
-                resetNavigationFlag()
-            }
-        }
+        navigateToQCBoxesSafely(idBox)
+        binding.etSearch.setText("")
     }
+
+    //    private fun handleManualScan(scannedCode: String) {
+//        if (isNavigatingToQCBoxes) {
+//            return
+//        }
+//
+//        val idBox = scannedCode.trim().takeIf { it.isNotEmpty() } ?: run {
+//            showError("Invalid code.")
+//            return
+//        }
+//
+//        val matchingOrder = findOrderByBoxId(idBox)
+//
+//        if (matchingOrder == null) {
+//            showError("Box not found in current inventory.")
+//            binding.etSearch.setText("")
+//            return
+//        }
+//
+//        GlobalOrder.clear()
+//        GlobalOrder.set(matchingOrder)
+//        GlobalReason.clear()
+//        GlobalReason.set(matchingOrder.reason)
+//
+//        setLoading(true)
+//
+//        viewLifecycleOwner.lifecycleScope.launch {
+//            try {
+//                val service = com.example.qceqapp.data.network.Service()
+//
+//                if (!performBoxScan(service, idBox)) return@launch
+//                if (!checkBoxExistence(service, idBox)) return@launch
+//
+//                navigateToQCBoxesSafely(idBox)
+//
+//            } catch (e: CancellationException) {
+//                throw e
+//            } catch (e: Exception) {
+//                showError("Error: ${e.localizedMessage ?: "Unknown error"}")
+//            } finally {
+//                setLoading(false)
+//                resetNavigationFlag()
+//                binding.etSearch.setText("")
+//            }
+//        }
+//    }
 ///
-    private fun findOrderByBoxId(scannedCode: String): Entities.QCOrderResponse? {
-        val currentOrders = viewModel.filteredOrders.value.ifEmpty { viewModel.orders.value }
+private fun findOrderByBoxId(scannedCode: String): Entities.QCOrderResponse? {
+    val currentOrders = viewModel.filteredOrders.value.ifEmpty { viewModel.orders.value }
 
-        return currentOrders.find { order ->
-            val boxIds = order.boxId?.split(",")?.map { it.trim() } ?: emptyList()
-            val boxIdsToInspect = order.boxIdToInspect?.split(",")?.map { it.trim() } ?: emptyList()
+    return currentOrders.find { order ->
+        val boxIds = order.boxId?.split(",")?.map { it.trim() } ?: emptyList()
+        val boxIdsToInspect = order.boxIdToInspect?.split(",")?.map { it.trim() } ?: emptyList()
 
-            // Comparar exactamente el código escaneado con cada boxId
-            boxIds.any { it.equals(scannedCode, ignoreCase = true) } ||
-                    boxIdsToInspect.any { it.equals(scannedCode, ignoreCase = true) }
-        }
+        boxIds.any { it.equals(scannedCode, ignoreCase = true) } ||
+                boxIdsToInspect.any { it.equals(scannedCode, ignoreCase = true) }
     }
+}
     private suspend fun performBoxScan(service: com.example.qceqapp.data.network.Service, idBox: String): Boolean {
         val result = service.setBoxScan(idBox)
         if (!result.isSuccess || result.getOrNull() != true) {
@@ -484,9 +521,14 @@ class ToInspectFragment : Fragment() {
         return true
     }
     private fun navigateToQCBoxesSafely(idBox: String) {
-        if (isNavigatingToQCBoxes) return
+
+        if (isNavigatingToQCBoxes) {
+            Log.w(TAG, "Already navigating, skipping")
+            return
+        }
 
         isNavigatingToQCBoxes = true
+
         val intent = com.example.qceqapp.uis.QCBoxes.QCBoxesActivity.newIntent(
             requireContext(),
             codeReaded = idBox
@@ -523,7 +565,11 @@ class ToInspectFragment : Fragment() {
         val validCustomerIds = currentOrders.mapNotNull { it.customerid }.toSet()
 
         val validAuthors = currentOrders.mapNotNull { it.author }.distinct().sorted()
-
+        val validBoxIds = currentOrders
+            .mapNotNull { it.boxId }
+            .filter { it.isNotBlank() }
+            .distinct()
+            .sorted()
         val filteredGrowers = viewModel.growers.value.filter { it.groCod in validGrowerCodes }
         val filteredCustomers = viewModel.customers.value.filter { it.codCustomer in validCustomerIds }
 
@@ -532,6 +578,7 @@ class ToInspectFragment : Fragment() {
             putExtra(FiltersActivity.EXTRA_GROWERS, ArrayList(filteredGrowers))
             putExtra(FiltersActivity.EXTRA_CUSTOMERS, ArrayList(filteredCustomers))
             putStringArrayListExtra(FiltersActivity.EXTRA_AUTHORS, ArrayList(validAuthors))
+            putStringArrayListExtra(FiltersActivity.EXTRA_BOX_IDS, ArrayList(validBoxIds))
         }
 
         filtersLauncher.launch(intent)

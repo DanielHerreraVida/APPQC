@@ -400,22 +400,72 @@ class ViewHistoryFragment : Fragment() {
         }
     }
 
-    private fun openFilterActivity() {
-        val authors = viewModel.history.value
-            .mapNotNull { it.author }
-            .distinct()
-            .sorted()
+//    private fun openFilterActivity() {
+//        val authors = viewModel.history.value
+//            .mapNotNull { it.author }
+//            .distinct()
+//            .sorted()
+//
+//        val intent = Intent(requireContext(), FilterQCHistoryActivity::class.java).apply {
+//            putExtra("Filters", HistoryAdapter.serializeFilterDictionary(filterDictionary))
+//            putExtra("customers", Gson().toJson(viewModel.customers.value))
+//            putExtra("growers", Gson().toJson(viewModel.growers.value))
+//            putExtra("authors", Gson().toJson(authors))
+//            putExtra("historyList", Gson().toJson(viewModel.history.value))
+//        }
+//        filterLauncher.launch(intent)
+//    }
+private fun openFilterActivity() {
+    val qaInspectors = viewModel.history.value
+        .mapNotNull { it.qaInspector }
+        .filter { it.isNotBlank() }
+        .distinct()
+        .sorted()
 
-        val intent = Intent(requireContext(), FilterQCHistoryActivity::class.java).apply {
-            putExtra("Filters", HistoryAdapter.serializeFilterDictionary(filterDictionary))
-            putExtra("customers", Gson().toJson(viewModel.customers.value))
-            putExtra("growers", Gson().toJson(viewModel.growers.value))
-            putExtra("authors", Gson().toJson(authors))
-            putExtra("historyList", Gson().toJson(viewModel.history.value))
+    val uniqueGrowers = viewModel.history.value
+        .mapNotNull { it.grower }
+        .filter { it.isNotBlank() }
+        .distinct()
+        .sorted()
+
+    val uniqueCustomers = viewModel.history.value
+        .mapNotNull { it.customerId }
+        .filter { it.isNotBlank() }
+        .distinct()
+        .sorted()
+
+    val uniqueAwbs = viewModel.history.value
+        .mapNotNull { it.bxAWB }
+        .filter { it.isNotBlank() }
+        .distinct()
+        .sorted()
+
+    val uniqueOrderNums = viewModel.history.value
+        .mapNotNull { it.bxNUM }
+        .filter { it.isNotBlank() }
+        .distinct()
+        .sorted()
+
+    val uniqueBoxIds = viewModel.history.value
+        .mapNotNull { it.boxId }
+        .filter { it.isNotBlank() }
+        .flatMap { boxIdString ->
+            boxIdString.split(",").map { it.trim() }.filter { it.isNotBlank() }
         }
-        filterLauncher.launch(intent)
-    }
+        .distinct()
+        .sorted()
 
+    val intent = Intent(requireContext(), FilterQCHistoryActivity::class.java).apply {
+        putExtra("Filters", HistoryAdapter.serializeFilterDictionary(filterDictionary))
+        putExtra("qaInspectors", Gson().toJson(qaInspectors))
+        putExtra("uniqueGrowers", Gson().toJson(uniqueGrowers))
+        putExtra("uniqueCustomers", Gson().toJson(uniqueCustomers))
+        putExtra("uniqueAwbs", Gson().toJson(uniqueAwbs))
+        putExtra("uniqueOrderNums", Gson().toJson(uniqueOrderNums))
+        putExtra("uniqueBoxIds", Gson().toJson(uniqueBoxIds))
+    }
+    filterLauncher.launch(intent)
+}
     private fun toggleSelectionMode(menuItem: MenuItem) {
         isSelectionMode = !isSelectionMode
 

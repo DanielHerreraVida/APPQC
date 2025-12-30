@@ -11,7 +11,6 @@ class Entities {
         val password: String
     )
 
-    // Response del token
     data class TokenResponse(
         @SerializedName("token")
         val token: String,
@@ -21,7 +20,6 @@ class Entities {
         val success: Boolean = true
     )
 
-    // Request para login de usuario
     data class LoginRequest(
         @SerializedName("login")
         val login: String,
@@ -29,7 +27,6 @@ class Entities {
         val password: String
     )
 
-    // Response del login de usuario
     data class LoginResponse(
         @SerializedName("qcUsername")
         val qcUsername: String? = null,
@@ -47,7 +44,6 @@ class Entities {
         val qcuEmail: String? = null
     )
 
-    // Clase genérica para respuestas
     data class ApiResponse<T>(
         @SerializedName("success")
         val success: Boolean,
@@ -71,7 +67,6 @@ class Entities {
         @SerializedName("pro_vendor")
         val proVendor: String
     ): Parcelable
-    // data/model/Entities.kt
     data class QCOrderResponse(
         @SerializedName("orderNum") val orderNum: String,
         @SerializedName("rowNum") val rowNum: String,
@@ -92,7 +87,6 @@ class Entities {
         @SerializedName("printed") val printed: String? = null,
         @SerializedName("saved") val saved: String? = null
     ): Serializable
-    // data/model/Entities.kt
     @Parcelize
     data class FilterData(
         val author: String = "",
@@ -253,7 +247,6 @@ class Entities {
         @SerializedName("bProduct") val bProduct: String? = null,
         @SerializedName("qcActions") val qcActions: String? = null
     ): Serializable
-    // Request para obtener orden por caja
     data class GetOrderByBoxRequest(
         @SerializedName("IdBox")
         val idBox: String,
@@ -496,6 +489,35 @@ class Entities {
         val issues: String
     )
 
+    data class SendBoxRequestToInpect(
+        @SerializedName("idBox")
+        val idBox: String,
+        @SerializedName("ordNum")
+        val ordNum: Int,
+        @SerializedName("awbNum")
+        val awbNum: String,
+        @SerializedName("telexNum")
+        val telexNum: String,
+        @SerializedName("num")
+        val num: Int,
+        @SerializedName("issueC")
+        val issueC: String,
+        @SerializedName("actionC")
+        val actionC: String,
+        @SerializedName("issueDes")
+        val issueDes: String,
+        @SerializedName("qaInsp")
+        val qaInsp: String,
+        @SerializedName("listImages")
+        val listImages: List<String>,
+        @SerializedName("listVideos")
+        val listVideos: List<String>,
+        @SerializedName("inspectStatus")
+        val inspectStatus: Int,
+        @SerializedName("barcodesToI")
+        val barcodesToI: String
+    )
+
     data class SendBoxRequest(
         @SerializedName("IdBox")
         val idBox: String,
@@ -608,6 +630,18 @@ class Entities {
         val dtModify: String,
         val user: String
     )
+    data class PendingReleaseItem(
+        val box: String,
+        val scannedAt: Long = System.currentTimeMillis()
+    )
 
-
+    data class ReleaseBoxesRequest(
+        val boxIds: List<Int>,
+        val user: String
+    )
+    data class SimpleReleaseResponse(
+        val success: Int,
+        val failed: Int,
+        val failedBoxIds: List<Int>
+    )
 }

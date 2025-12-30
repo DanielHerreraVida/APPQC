@@ -62,41 +62,32 @@ class MediaPagerAdapter(
                 try {
                     val service = com.example.qceqapp.data.network.Service()
 
-                    android.util.Log.d("MediaPagerAdapter", "📞 Calling API...")
-
                     val result = withContext(Dispatchers.IO) {
                         service.getFilesByBoxAndOrder(guid, orderNum, boxIdToInspect)
                     }
 
-                    android.util.Log.d("MediaPagerAdapter", "result.isSuccess: ${result.isSuccess}")
 
                     if (result.isSuccess) {
                         val imageBytes = result.getOrNull()
                         if (imageBytes != null) {
-                            android.util.Log.d("MediaPagerAdapter", "✅ imageBytes size: ${imageBytes.size}")
                             val bitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
                             if (bitmap != null) {
-                                android.util.Log.d("MediaPagerAdapter", "✅ Bitmap created: ${bitmap.width}x${bitmap.height}")
                                 imageView.setImageBitmap(bitmap)
                             } else {
-                                android.util.Log.e("MediaPagerAdapter", "❌ Bitmap is NULL after decode")
                                 showError()
                             }
                         } else {
-                            android.util.Log.e("MediaPagerAdapter", "❌ imageBytes is null")
                             showError()
                         }
                     } else {
-                        android.util.Log.e("MediaPagerAdapter", "❌ API call failed")
                         val exception = result.exceptionOrNull()
                         if (exception != null) {
-                            android.util.Log.e("MediaPagerAdapter", "❌ Exception: ${exception.message}", exception)
+                            android.util.Log.e("MediaPagerAdapter", "Exception: ${exception.message}", exception)
                         }
                         showError()
                     }
 
                 } catch (e: Exception) {
-                    android.util.Log.e("MediaPagerAdapter", "❌ Exception loading image", e)
                     showError()
                 } finally {
                     progressBar.visibility = View.GONE

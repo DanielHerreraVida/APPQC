@@ -105,7 +105,6 @@ class QCBoxesActivity : AppCompatActivity() {
         rvAll.layoutManager = LinearLayoutManager(this)
         rvAll.adapter = allAdapter
     }
-
     private fun setupViewModel() {
         viewModel = QCBoxesViewModel()
 
@@ -115,17 +114,34 @@ class QCBoxesActivity : AppCompatActivity() {
                 telexTv.text = order.bxTELEX ?: "-"
                 farmTv.text = order.grower ?: "-"
                 barcodeTv.text = order.boxId ?: codeReaded
+                Log.d(TAG, "Order loaded in UI")
             }
         }
 
         viewModel.onDataLoaded = {
-            runOnUiThread { updateUI() }
+            runOnUiThread {
+                Log.d(TAG, "Data loaded callback triggered")
+                updateUI()
+            }
         }
 
         viewModel.onError = { error ->
             runOnUiThread {
                 progressBar.visibility = View.GONE
-                Toast.makeText(this, error, Toast.LENGTH_LONG).show()
+                Log.e(TAG, "Error callback: $error")
+
+                androidx.appcompat.app.AlertDialog.Builder(this)
+                    .setTitle("Error")
+                    .setMessage(error)
+                    .setPositiveButton("Retry") { _, _ ->
+                        progressBar.visibility = View.VISIBLE
+                        viewModel.loadBoxData(codeReaded, previouslySelectedBoxes)
+                    }
+                    .setNegativeButton("Cancel") { _, _ ->
+                        finish()
+                    }
+                    .setCancelable(false)
+                    .show()
             }
         }
     }
@@ -180,8 +196,8 @@ class QCBoxesActivity : AppCompatActivity() {
                                 intent.putExtra("idBox", codeReaded)
                                 intent.putExtra("selectedBoxes", serializedBoxes)
                                 intent.putExtra("reason", viewModel.orderHeader?.reason ?: "Unknown reason")
-                                intent.putExtra("idToInspect", idToInspect)
-
+//                                intent.putExtra("idToInspect", idToInspect)
+                                intent.putExtra("idToInspect", viewModel.idToInspect)
                                 startActivity(intent)
                                 Toast.makeText(this, "Total Boxes: ${selectedBoxesList.size}", Toast.LENGTH_SHORT).show()
                                 finish()

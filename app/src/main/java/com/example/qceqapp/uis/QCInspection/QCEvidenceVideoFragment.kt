@@ -24,7 +24,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
-
+import com.example.qceqapp.uis.scanner.CameraVideoActivity
 class QCEvidenceVideoFragment : Fragment() {
 
     private val viewModel: QCMediaViewModel by activityViewModels()
@@ -37,17 +37,14 @@ class QCEvidenceVideoFragment : Fragment() {
     private var progressBar: ProgressBar? = null
     private var tempVideoFile: File? = null
 
-    // ✅ Launcher para solicitar permisos
     private val requestPermissionsLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
         val allGranted = permissions.entries.all { it.value }
 
         if (allGranted) {
-            // Todos los permisos concedidos, abrir cámara
             captureVideoWithoutSavingToGallery()
         } else {
-            // Algunos permisos fueron denegados
             Toast.makeText(
                 requireContext(),
                 "Camera and storage permissions are required to record videos",
@@ -56,38 +53,53 @@ class QCEvidenceVideoFragment : Fragment() {
         }
     }
 
-    private val captureVideo = registerForActivityResult(
-        ActivityResultContracts.StartActivityForResult()
-    ) { result ->
-        if (result.resultCode == Activity.RESULT_OK) {
-            tempVideoFile?.let { file ->
-                try {
-                    if (file.exists() && file.length() > 0) {
-                        val uri = FileProvider.getUriForFile(
-                            requireContext(),
-                            "${requireContext().packageName}.provider",
-                            file
-                        )
-                        uploadVideoToServer(uri)
-                    } else {
-                        Toast.makeText(requireContext(), "Video capture failed - file is empty", Toast.LENGTH_SHORT).show()
-                        file.delete()
-                        tempVideoFile = null
-                    }
-                } catch (e: Exception) {
-                    Toast.makeText(requireContext(), "Error: ${e.message}", Toast.LENGTH_SHORT).show()
-                    file.delete()
-                    tempVideoFile = null
-                }
-            } ?: run {
-                Toast.makeText(requireContext(), "Error: No video file reference", Toast.LENGTH_SHORT).show()
+//    private val captureVideo = registerForActivityResult(
+//        ActivityResultContracts.StartActivityForResult()
+//    ) { result ->
+//        if (result.resultCode == Activity.RESULT_OK) {
+//            tempVideoFile?.let { file ->
+//                try {
+//                    if (file.exists() && file.length() > 0) {
+//                        val uri = FileProvider.getUriForFile(
+//                            requireContext(),
+//                            "${requireContext().packageName}.provider",
+//                            file
+//                        )
+//                        uploadVideoToServer(uri)
+//                    } else {
+//                        Toast.makeText(requireContext(), "Video capture failed - file is empty", Toast.LENGTH_SHORT).show()
+//                        file.delete()
+//                        tempVideoFile = null
+//                    }
+//                } catch (e: Exception) {
+//                    Toast.makeText(requireContext(), "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+//                    file.delete()
+//                    tempVideoFile = null
+//                }
+//            } ?: run {
+//                Toast.makeText(requireContext(), "Error: No video file reference", Toast.LENGTH_SHORT).show()
+//            }
+//        } else {
+//            tempVideoFile?.delete()
+//            tempVideoFile = null
+//        }
+//    }
+private val captureVideo = registerForActivityResult(
+    ActivityResultContracts.StartActivityForResult()
+) { result ->
+    if (result.resultCode == Activity.RESULT_OK) {
+        val videoPath = result.data?.getStringExtra(CameraVideoActivity.EXTRA_VIDEO_PATH)
+        if (!videoPath.isNullOrEmpty()) {
+            val file = File(videoPath)
+            if (file.exists()) {
+                val uri = Uri.fromFile(file)
+                uploadVideoToServer(uri)
             }
         } else {
-            tempVideoFile?.delete()
-            tempVideoFile = null
+            Toast.makeText(requireContext(), "Could not get the video", Toast.LENGTH_SHORT).show()
         }
     }
-
+}
     private val selectVideos = registerForActivityResult(
         ActivityResultContracts.GetMultipleContents()
     ) { uris ->
@@ -104,7 +116,7 @@ class QCEvidenceVideoFragment : Fragment() {
         val btnVideo = view.findViewById<Button>(R.id.btn_Video)
         val btnFiles = view.findViewById<Button>(R.id.btn_VFiles)
         val btnContinue = view.findViewById<Button>(R.id.btn_Continue)
-        val btnDeleteAll = view.findViewById<ImageButton>(R.id.btn_DeleteVLst)
+        val btnDeleteAll = view.findViewById<Button>(R.id.btn_DeleteVLst)
 
         counter = view.findViewById(R.id.tV_TotalVideos)
         viewPager = view.findViewById(R.id.viewPagerVideos)
@@ -142,12 +154,10 @@ class QCEvidenceVideoFragment : Fragment() {
             }
         })
 
-        // ✅ Verificar permisos antes de grabar video
         btnVideo.setOnClickListener {
             checkPermissionsAndCaptureVideo()
         }
 
-        // ✅ Verificar permisos antes de seleccionar archivos
         btnFiles.setOnClickListener {
             checkPermissionsAndSelectFiles()
         }
@@ -191,15 +201,12 @@ class QCEvidenceVideoFragment : Fragment() {
         return view
     }
 
-    // ✅ Verificar permisos antes de capturar video
     private fun checkPermissionsAndCaptureVideo() {
         when {
             PermissionHelper.hasAllPermissions(requireContext()) -> {
-                // Ya tiene todos los permisos
                 captureVideoWithoutSavingToGallery()
             }
             shouldShowRequestPermissionRationale(android.Manifest.permission.CAMERA) -> {
-                // Mostrar explicación
                 AlertDialog.Builder(requireContext())
                     .setTitle("Camera Permission Required")
                     .setMessage("Camera permission is needed to record videos for inspection. Please grant the permission to continue.")
@@ -210,21 +217,17 @@ class QCEvidenceVideoFragment : Fragment() {
                     .show()
             }
             else -> {
-                // Solicitar permisos directamente
                 requestPermissions()
             }
         }
     }
 
-    // ✅ Verificar permisos antes de seleccionar archivos
     private fun checkPermissionsAndSelectFiles() {
         when {
             PermissionHelper.hasAllPermissions(requireContext()) -> {
-                // Ya tiene todos los permisos
                 selectVideos.launch("video/*")
             }
             else -> {
-                // Solicitar permisos
                 Toast.makeText(
                     requireContext(),
                     "Storage permissions are required to select videos",
@@ -235,7 +238,6 @@ class QCEvidenceVideoFragment : Fragment() {
         }
     }
 
-    // ✅ Solicitar permisos
     private fun requestPermissions() {
         requestPermissionsLauncher.launch(PermissionHelper.getRequiredPermissions())
     }
@@ -252,39 +254,15 @@ class QCEvidenceVideoFragment : Fragment() {
         adapter = null
         progressBar = null
     }
-
     private fun captureVideoWithoutSavingToGallery() {
         try {
-            tempVideoFile?.delete()
-            tempVideoFile = File(requireContext().cacheDir, "temp_video_${System.currentTimeMillis()}.mp4")
-
-            val videoUri = FileProvider.getUriForFile(
-                requireContext(),
-                "${requireContext().packageName}.provider",
-                tempVideoFile!!
-            )
-
-            val intent = Intent(MediaStore.ACTION_VIDEO_CAPTURE).apply {
-                putExtra(MediaStore.EXTRA_OUTPUT, videoUri)
-                addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
-                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            }
-
-            if (intent.resolveActivity(requireActivity().packageManager) != null) {
-                captureVideo.launch(intent)
-            } else {
-                Toast.makeText(requireContext(), "No camera app found", Toast.LENGTH_SHORT).show()
-                tempVideoFile?.delete()
-                tempVideoFile = null
-            }
+            val intent = Intent(requireContext(), CameraVideoActivity::class.java)
+            captureVideo.launch(intent)
         } catch (e: Exception) {
             Toast.makeText(requireContext(), "Error starting camera: ${e.message}", Toast.LENGTH_SHORT).show()
-            tempVideoFile?.delete()
-            tempVideoFile = null
         }
     }
 
-    // ... resto de métodos sin cambios (showDeleteSingleVideoDialog, deleteSingleVideo, etc.)
 
     private fun showDeleteSingleVideoDialog(position: Int) {
         if (!isAdded) return

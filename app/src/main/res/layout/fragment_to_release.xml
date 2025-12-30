@@ -6,30 +6,53 @@
     android:orientation="vertical"
     android:background="@color/login_card_background">
 
-    <!-- Campo de búsqueda -->
-    <com.google.android.material.card.MaterialCardView
+    <!-- Search and Filter Section -->
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:orientation="horizontal"
         android:layout_margin="16dp"
-        app:cardCornerRadius="8dp"
-        app:cardElevation="2dp"
-        app:cardBackgroundColor="@color/card_background">
+        android:gravity="center_vertical">
 
-        <EditText
-            android:id="@+id/etSearch"
-            android:layout_width="match_parent"
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginEnd="8dp"
+            app:cardBackgroundColor="@color/card_background"
+            app:cardCornerRadius="8dp"
+            app:cardElevation="2dp">
+
+            <EditText
+                android:id="@+id/etSearch"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:background="@android:color/transparent"
+                android:hint="Scan"
+                android:imeOptions="actionDone"
+                android:inputType="text"
+                android:maxLines="1"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:singleLine="true"
+                android:textColor="@color/text_primary"
+                android:textColorHint="@color/text_hint" />
+        </com.google.android.material.card.MaterialCardView>
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnFilter"
+            android:layout_width="wrap_content"
             android:layout_height="48dp"
-            android:hint="Scan"
-            android:paddingStart="16dp"
-            android:paddingEnd="16dp"
-            android:background="@android:color/transparent"
-            android:textColor="@color/text_primary"
-            android:textColorHint="@color/text_hint"
-            android:inputType="text"
-            android:imeOptions="actionDone"
-            android:maxLines="1"
-            android:singleLine="true" />
-    </com.google.android.material.card.MaterialCardView>
+            android:backgroundTint="@color/colorPrimaryDark"
+            android:text="Filter"
+            android:textColor="@color/white"
+            app:cornerRadius="8dp"
+            app:icon="@drawable/baseline_filter_alt_24"
+            app:iconGravity="textStart"
+            app:iconTint="@color/white" />
+    </LinearLayout>
+
+    <!-- Process and Scan Buttons -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -39,25 +62,39 @@
         android:layout_marginBottom="16dp"
         android:gravity="center">
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnFilter"
+        <FrameLayout
             android:layout_width="0dp"
             android:layout_height="48dp"
             android:layout_weight="1"
-            android:text="Filters"
-            android:textColor="@color/white"
-            android:backgroundTint="@color/colorPrimaryDark"
-            app:icon="@drawable/baseline_filter_alt_24"
-            app:iconTint="@color/white"
-            app:iconGravity="textStart"
-            app:cornerRadius="8dp"
-            android:layout_marginEnd="8dp" />
+            android:layout_marginEnd="8dp">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnProcess"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:backgroundTint="@color/colorPrimaryDark"
+                android:text="Process"
+                android:textColor="@color/white"
+                app:cornerRadius="8dp"
+                app:iconGravity="textStart"
+                app:iconTint="@color/white" />
+
+            <ProgressBar
+                android:id="@+id/progressBarProcess"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:layout_gravity="center"
+                android:indeterminateTint="@color/white"
+                android:visibility="gone" />
+
+        </FrameLayout>
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnScan"
             android:layout_width="0dp"
             android:layout_height="48dp"
             android:layout_weight="1"
+            android:layout_marginStart="8dp"
             android:text="Scan"
             android:textColor="@color/white"
             android:textSize="14sp"
@@ -66,26 +103,110 @@
             app:iconTint="@color/white"
             app:iconGravity="textStart"
             app:iconSize="18dp"
-            app:cornerRadius="8dp"
+            app:cornerRadius="8dp" />
+    </LinearLayout>
+
+    <!-- View Selector (Spinner/Picker) -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:paddingBottom="8dp"
+        android:gravity="center_vertical">
+
+        <Spinner
+            android:id="@+id/spinnerViewSelector"
+            android:layout_width="351dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:background="@drawable/spinner_background"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp" />
+
+        <TextView
+            android:id="@+id/tvItemCount"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="(0)"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:textColor="@color/colorPrimaryDark"
             android:layout_marginStart="8dp" />
     </LinearLayout>
 
-
     <!-- Progress Bar -->
-    <ProgressBar
-        android:id="@+id/progressBar"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="center"
-        android:visibility="gone"
-        android:indeterminateTint="@color/colorPrimaryDark" />
-
-    <!-- RecyclerView de órdenes -->
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/recyclerOrders"
+    <FrameLayout
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:paddingBottom="16dp"
-        android:clipToPadding="false" />
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="8dp">
+
+        <ProgressBar
+            android:id="@+id/progressBar"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:visibility="gone" />
+    </FrameLayout>
+
+    <!-- Content Container (Single RecyclerView) -->
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <!-- Pending Items RecyclerView -->
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/recyclerPending"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:clipToPadding="false"
+            android:paddingTop="4dp"
+            android:paddingBottom="4dp"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp"
+            android:visibility="gone" />
+
+        <!-- History RecyclerView -->
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/recyclerHistory"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:clipToPadding="false"
+            android:paddingTop="4dp"
+            android:paddingBottom="4dp"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp"
+            android:visibility="visible" />
+
+        <!-- Empty State -->
+        <LinearLayout
+            android:id="@+id/layoutEmptyState"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:padding="32dp"
+            android:visibility="gone">
+
+            <ImageView
+                android:id="@+id/ivEmptyIcon"
+                android:layout_width="80dp"
+                android:layout_height="80dp"
+                android:src="@drawable/ic_caja_release"
+                android:alpha="0.3"
+                android:layout_marginBottom="16dp" />
+
+            <TextView
+                android:id="@+id/tvEmptyMessage"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="No items to display"
+                android:textSize="16sp"
+                android:textColor="@color/text_hint"
+                android:gravity="center" />
+        </LinearLayout>
+    </FrameLayout>
 
 </LinearLayout>

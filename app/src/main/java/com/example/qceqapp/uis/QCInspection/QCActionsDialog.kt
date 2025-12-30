@@ -14,6 +14,7 @@ class QCActionsDialog(
 ) : Dialog(context) {
 
     private val selectedActions = mutableListOf<Entities.QCActionResponse>()
+    private var filteredActions = actions.toMutableList()
 
     init {
         setContentView(R.layout.dialog_qc_actions)
@@ -33,7 +34,7 @@ class QCActionsDialog(
         val adapter = ArrayAdapter(
             context,
             android.R.layout.simple_list_item_multiple_choice,
-            actions.map { it.descriptionAen }
+            filteredActions.map { it.descriptionAes }
         )
 
         listView.choiceMode = ListView.CHOICE_MODE_MULTIPLE
@@ -51,23 +52,32 @@ class QCActionsDialog(
         searchView.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
             override fun onQueryTextSubmit(query: String?) = false
             override fun onQueryTextChange(newText: String?): Boolean {
-                adapter.filter.filter(newText) {
-                    for (i in actions.indices) {
-                        val item = actions[i]
-                        if (selectedActions.any { it.idAction == item.idAction }) {
-                            listView.setItemChecked(i, true)
-                        } else {
-                            listView.setItemChecked(i, false)
+                filteredActions.clear()
+                if (newText.isNullOrBlank()) {
+                    filteredActions.addAll(actions)
+                } else {
+                    filteredActions.addAll(
+                        actions.filter {
+                            it.descriptionAes.contains(newText, ignoreCase = true)
                         }
-                    }
+                    )
                 }
+                adapter.clear()
+                adapter.addAll(filteredActions.map { it.descriptionAes })
+                adapter.notifyDataSetChanged()
+                for (i in filteredActions.indices) {
+                    val item = filteredActions[i]
+                    val isSelected = selectedActions.any { it.idAction == item.idAction }
+                    listView.setItemChecked(i, isSelected)
+                }
+
                 return true
             }
         })
 
-
         listView.setOnItemClickListener { _, _, position, _ ->
-            val item = actions[position]
+            val item = filteredActions[position]
+
             if (selectedActions.any { it.idAction == item.idAction }) {
                 selectedActions.removeAll { it.idAction == item.idAction }
             } else {

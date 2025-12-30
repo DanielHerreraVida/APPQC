@@ -50,7 +50,9 @@
             </LinearLayout>
 
             <!-- Date Range Card -->
+            <!-- ✅ AGREGADO: android:id="@+id/llDateSection" -->
             <com.google.android.material.card.MaterialCardView
+                android:id="@+id/llDateSection"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="12dp"
@@ -92,7 +94,6 @@
                             android:buttonTint="#4CAF50" />
                     </LinearLayout>
 
-                    <!-- Start Date -->
                     <TextView
                         android:id="@+id/tvStartDate"
                         android:layout_width="match_parent"
@@ -116,10 +117,8 @@
                         app:cornerRadius="8dp"
                         android:textAllCaps="false"
                         android:textSize="15sp"
-                        android:layout_marginBottom="12dp"
-                        android:enabled="false" />
+                        android:layout_marginBottom="12dp" />
 
-                    <!-- End Date -->
                     <TextView
                         android:id="@+id/tvEndDate"
                         android:layout_width="match_parent"
@@ -143,10 +142,8 @@
                         app:cornerRadius="8dp"
                         android:textAllCaps="false"
                         android:textSize="15sp"
-                        android:layout_marginBottom="8dp"
-                        android:enabled="false" />
+                        android:layout_marginBottom="8dp" />
 
-                    <!-- Clear Dates Button -->
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btnClearDates"
                         android:layout_width="match_parent"
@@ -158,14 +155,15 @@
                         app:strokeWidth="1dp"
                         app:cornerRadius="8dp"
                         android:textAllCaps="false"
-                        android:textSize="15sp"
-                        android:enabled="false" />
+                        android:textSize="15sp" />
 
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
             <!-- Users Card -->
+            <!-- ✅ AGREGADO: android:id="@+id/llUsersSection" -->
             <com.google.android.material.card.MaterialCardView
+                android:id="@+id/llUsersSection"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="12dp"
@@ -207,7 +205,6 @@
                             android:buttonTint="#4CAF50" />
                     </LinearLayout>
 
-                    <!-- Users ScrollView -->
                     <ScrollView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
@@ -234,132 +231,179 @@
 
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
-            <!-- Box/Barcode Card -->
-        <!-- Box/Barcode Card -->
-        <com.google.android.material.card.MaterialCardView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="12dp"
-            app:cardCornerRadius="12dp"
-            app:cardElevation="0dp"
-            app:strokeWidth="0dp"
-            app:cardBackgroundColor="#FFFFFF">
 
-            <LinearLayout
+            <!-- Box/Barcode Card with Selector -->
+            <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="16dp">
+                android:layout_marginBottom="12dp"
+                app:cardCornerRadius="12dp"
+                app:cardElevation="0dp"
+                app:strokeWidth="0dp"
+                app:cardBackgroundColor="#FFFFFF">
 
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Filter by Box"
-                    android:textSize="16sp"
-                    android:textStyle="bold"
-                    android:textColor="#212121"
-                    android:layout_marginBottom="12dp" />
-
-                <!-- EditText simple para escanear o ingresar box -->
-                <EditText
-                    android:id="@+id/etBoxSearch"
-                    android:layout_width="match_parent"
-                    android:layout_height="48dp"
-                    android:hint="Scan "
-                    android:paddingStart="16dp"
-                    android:paddingEnd="16dp"
-                    android:background="@drawable/edit_text_background"
-                    android:textColor="#212121"
-                    android:textColorHint="#9E9E9E"
-                    android:inputType="text"
-                    android:imeOptions="actionDone"
-                    android:singleLine="true"
-                    android:maxLines="1"
-                    android:layout_marginBottom="8dp" />
-
-                <!-- Botones Scan y Clear -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:layout_marginBottom="12dp">
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnScanBox"
-                        android:layout_width="0dp"
-                        android:layout_height="48dp"
-                        android:layout_weight="1"
-                        android:text="Scan"
-                        android:textColor="#FFFFFF"
-                        android:backgroundTint="#FF9800"
-                        app:icon="@drawable/baseline_qr_code_scanner_24"
-                        app:iconTint="#FFFFFF"
-                        app:cornerRadius="8dp"
-                        android:textAllCaps="false"
-                        android:textSize="15sp"
-                        android:layout_marginEnd="8dp" />
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnClearBoxes"
-                        android:layout_width="0dp"
-                        android:layout_height="48dp"
-                        android:layout_weight="1"
-                        android:text="Clear"
-                        android:textColor="#757575"
-                        android:backgroundTint="#FFFFFF"
-                        app:strokeColor="#E0E0E0"
-                        app:strokeWidth="1dp"
-                        app:cornerRadius="8dp"
-                        android:textAllCaps="false"
-                        android:textSize="15sp" />
-                </LinearLayout>
-
-                <!-- Display de códigos escaneados -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:padding="12dp"
-                    android:background="#F5F5F5"
-                    android:gravity="center_vertical">
-
-                    <ImageView
-                        android:layout_width="20dp"
-                        android:layout_height="20dp"
-                        android:src="@drawable/baseline_qr_code_scanner_24"
-                        android:layout_marginEnd="12dp"
-                        app:tint="#757575" />
+                    android:orientation="vertical"
+                    android:padding="16dp">
 
                     <LinearLayout
-                        android:layout_width="0dp"
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:orientation="vertical">
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:layout_marginBottom="12dp">
 
                         <TextView
-                            android:id="@+id/tvBoxesCount"
-                            android:layout_width="match_parent"
+                            android:layout_width="0dp"
                             android:layout_height="wrap_content"
-                            android:text="No boxes scanned"
-                            android:textSize="14sp"
+                            android:layout_weight="1"
+                            android:text="Filter by Box"
+                            android:textSize="16sp"
                             android:textStyle="bold"
-                            android:textColor="#424242" />
+                            android:textColor="#212121" />
 
-                        <TextView
-                            android:id="@+id/tvBoxesList"
-                            android:layout_width="match_parent"
+                        <CheckBox
+                            android:id="@+id/cbBoxesAll"
+                            android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text=""
-                            android:textSize="12sp"
-                            android:textColor="#757575"
-                            android:maxLines="2"
-                            android:ellipsize="end"
-                            android:layout_marginTop="4dp" />
+                            android:text="All"
+                            android:textSize="14sp"
+                            android:textColor="#212121"
+                            android:checked="true"
+                            android:buttonTint="#4CAF50" />
                     </LinearLayout>
-                </LinearLayout>
 
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
+                    <!-- Selector Dropdown -->
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Select from list or scan:"
+                        android:textSize="13sp"
+                        android:textColor="#757575"
+                        android:layout_marginBottom="8dp" />
+
+                    <Spinner
+                        android:id="@+id/spinnerBoxSelector"
+                        android:layout_width="match_parent"
+                        android:layout_height="48dp"
+                        android:background="@drawable/spinner_background"
+                        android:paddingStart="12dp"
+                        android:paddingEnd="12dp"
+                        android:layout_marginBottom="8dp"
+                        android:spinnerMode="dropdown" />
+
+                    <!-- Scan Input Section -->
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Or scan/type manually:"
+                        android:textSize="13sp"
+                        android:textColor="#757575"
+                        android:layout_marginTop="4dp"
+                        android:layout_marginBottom="8dp" />
+
+                    <EditText
+                        android:id="@+id/etBoxSearch"
+                        android:layout_width="match_parent"
+                        android:layout_height="48dp"
+                        android:hint="Scan or type box ID"
+                        android:paddingStart="16dp"
+                        android:paddingEnd="16dp"
+                        android:background="@drawable/edit_text_background"
+                        android:textColor="#212121"
+                        android:textColorHint="#9E9E9E"
+                        android:inputType="text"
+                        android:imeOptions="actionDone"
+                        android:singleLine="true"
+                        android:maxLines="1"
+                        android:layout_marginBottom="8dp" />
+
+                    <!-- Botones Scan y Clear -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:layout_marginBottom="12dp">
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnScanBox"
+                            android:layout_width="0dp"
+                            android:layout_height="48dp"
+                            android:layout_weight="1"
+                            android:text="Scan"
+                            android:textColor="#FFFFFF"
+                            android:backgroundTint="#FF9800"
+                            app:icon="@drawable/baseline_qr_code_scanner_24"
+                            app:iconTint="#FFFFFF"
+                            app:cornerRadius="8dp"
+                            android:textAllCaps="false"
+                            android:textSize="15sp"
+                            android:layout_marginEnd="8dp" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnClearBoxes"
+                            android:layout_width="0dp"
+                            android:layout_height="48dp"
+                            android:layout_weight="1"
+                            android:text="Clear"
+                            android:textColor="#757575"
+                            android:backgroundTint="#FFFFFF"
+                            app:strokeColor="#E0E0E0"
+                            app:strokeWidth="1dp"
+                            app:cornerRadius="8dp"
+                            android:textAllCaps="false"
+                            android:textSize="15sp" />
+                    </LinearLayout>
+
+                    <!-- Display de códigos seleccionados -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:padding="12dp"
+                        android:background="#F5F5F5"
+                        android:gravity="center_vertical">
+
+                        <ImageView
+                            android:layout_width="20dp"
+                            android:layout_height="20dp"
+                            android:src="@drawable/baseline_qr_code_scanner_24"
+                            android:layout_marginEnd="12dp"
+                            app:tint="#757575" />
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:id="@+id/tvBoxesCount"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:text="No boxes selected"
+                                android:textSize="14sp"
+                                android:textStyle="bold"
+                                android:textColor="#424242" />
+
+                            <TextView
+                                android:id="@+id/tvBoxesList"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:text=""
+                                android:textSize="12sp"
+                                android:textColor="#757575"
+                                android:maxLines="2"
+                                android:ellipsize="end"
+                                android:layout_marginTop="4dp" />
+                        </LinearLayout>
+                    </LinearLayout>
+
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
         </LinearLayout>
 
     </ScrollView>

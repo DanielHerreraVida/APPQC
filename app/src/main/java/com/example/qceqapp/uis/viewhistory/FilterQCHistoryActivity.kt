@@ -5,8 +5,11 @@ import android.app.DatePickerDialog
 import android.app.Dialog
 import android.content.Intent
 import android.os.Bundle
+import android.text.Editable
+import android.text.TextWatcher
 import android.view.WindowManager
 import android.widget.ArrayAdapter
+import android.widget.ListView
 import android.widget.SearchView
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
@@ -27,13 +30,14 @@ class FilterQCHistoryActivity : AppCompatActivity() {
     private val filterDictionary = mutableMapOf<String, String>()
     private val dateFormat = SimpleDateFormat("MM/dd/yyyy", Locale.US)
     private val barcodes = mutableListOf<String>()
-    private var authors: List<String> = emptyList()
-    private var historyList: List<Entities.QCHistoryResponse> = emptyList()
+    private var qaInspectors: List<String> = emptyList()
     private var uniqueGrowers: List<String> = emptyList()
     private var uniqueCustomers: List<String> = emptyList()
     private var uniqueAwbs: List<String> = emptyList()
     private var uniqueOrderNums: List<String> = emptyList()
+    private var uniqueBoxIds: List<String> = emptyList()
     private var isClearing = false
+    private val selectedQaInspectors = mutableListOf<String>()
     private val selectedGrowers = mutableListOf<String>()
     private val selectedCustomers = mutableListOf<String>()
     private val selectedAwbs = mutableListOf<String>()
@@ -57,6 +61,7 @@ class FilterQCHistoryActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityFilterQcHistoryBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN)
 
         supportActionBar?.apply {
             title = "Filter History"
@@ -65,9 +70,7 @@ class FilterQCHistoryActivity : AppCompatActivity() {
 
         setupBackPressed()
         loadIntentData()
-        extractUniqueValues()
         setupCheckboxes()
-        setupSpinners()
         setupDatePickers()
         setupButtons()
         loadExistingFilters()
@@ -92,58 +95,53 @@ class FilterQCHistoryActivity : AppCompatActivity() {
                 val filters = Gson().fromJson<Map<String, String>>(filtersJson, type)
                 filterDictionary.putAll(filters)
             }
-            intent.getStringExtra("authors")?.let { authorsJson ->
+
+            intent.getStringExtra("qaInspectors")?.let { qaInspectorsJson ->
                 val type = object : TypeToken<List<String>>() {}.type
-                authors = Gson().fromJson(authorsJson, type) ?: emptyList()
+                qaInspectors = Gson().fromJson(qaInspectorsJson, type) ?: emptyList()
             }
 
-            intent.getStringExtra("historyList")?.let { historyJson ->
-                val type = object : TypeToken<List<Entities.QCHistoryResponse>>() {}.type
-                historyList = Gson().fromJson(historyJson, type) ?: emptyList()
+            intent.getStringExtra("uniqueGrowers")?.let { json ->
+                val type = object : TypeToken<List<String>>() {}.type
+                uniqueGrowers = Gson().fromJson(json, type) ?: emptyList()
             }
+
+            intent.getStringExtra("uniqueCustomers")?.let { json ->
+                val type = object : TypeToken<List<String>>() {}.type
+                uniqueCustomers = Gson().fromJson(json, type) ?: emptyList()
+            }
+
+            intent.getStringExtra("uniqueAwbs")?.let { json ->
+                val type = object : TypeToken<List<String>>() {}.type
+                uniqueAwbs = Gson().fromJson(json, type) ?: emptyList()
+            }
+
+            intent.getStringExtra("uniqueOrderNums")?.let { json ->
+                val type = object : TypeToken<List<String>>() {}.type
+                uniqueOrderNums = Gson().fromJson(json, type) ?: emptyList()
+            }
+
+            intent.getStringExtra("uniqueBoxIds")?.let { json ->
+                val type = object : TypeToken<List<String>>() {}.type
+                uniqueBoxIds = Gson().fromJson(json, type) ?: emptyList()
+            }
+
         } catch (e: Exception) {
             Toast.makeText(this, "Error loading filter data: ${e.message}", Toast.LENGTH_SHORT).show()
         }
     }
 
-    private fun extractUniqueValues() {
-        uniqueGrowers = historyList
-            .mapNotNull { it.grower }
-            .filter { it.isNotBlank() }
-            .distinct()
-            .sorted()
-        uniqueCustomers = historyList
-            .mapNotNull { it.customerId }
-            .filter { it.isNotBlank() }
-            .distinct()
-            .sorted()
-        uniqueAwbs = historyList
-            .mapNotNull { it.bxAWB }
-            .filter { it.isNotBlank() }
-            .distinct()
-            .sorted()
-
-        uniqueOrderNums = historyList
-            .mapNotNull { it.orderNum }
-            .filter { it.isNotBlank() }
-            .distinct()
-            .sorted()
-    }
-
     private fun setupCheckboxes() {
-        binding.checkboxAuthorAll.setOnCheckedChangeListener { _, isChecked ->
+        binding.checkboxQaInspectorAll.setOnCheckedChangeListener { _, isChecked ->
             if (isClearing) return@setOnCheckedChangeListener
             if (isChecked) {
-                binding.spinnerAuthor.setText("", false)
+                selectedQaInspectors.clear()
+                binding.tvQaInspectorChoosed.text = ""
             }
-            binding.spinnerAuthor.isEnabled = true
+            binding.btnQaInspector.isEnabled = true
+            binding.tvQaInspectorChoosed.isEnabled = true
         }
-        binding.radioGroupInspectionStatus.setOnCheckedChangeListener { _, checkedId ->
-            // Si selecciona algún radio button, desmarcar "All"
-            if (checkedId != -1) {
-                binding.checkboxInspectionStatusAll.isChecked = false
-            }
-        }
+
         binding.checkboxGrowersAll.setOnCheckedChangeListener { _, isChecked ->
             if (isClearing) return@setOnCheckedChangeListener
             if (isChecked) {
@@ -193,6 +191,12 @@ class FilterQCHistoryActivity : AppCompatActivity() {
             binding.rbRejected.isEnabled = true
         }
 
+        binding.radioGroupInspectionStatus.setOnCheckedChangeListener { _, checkedId ->
+            if (checkedId != -1) {
+                binding.checkboxInspectionStatusAll.isChecked = false
+            }
+        }
+
         binding.checkboxInspectionDateAll.setOnCheckedChangeListener { _, isChecked ->
             if (isClearing) return@setOnCheckedChangeListener
             if (isChecked) {
@@ -203,20 +207,7 @@ class FilterQCHistoryActivity : AppCompatActivity() {
             binding.etFechaFinal.isEnabled = true
         }
     }
-    private fun setupSpinners() {
-        val authorList = mutableListOf("")
-        authorList.addAll(listOf("QA", "SOURCING"))
-        val authorAdapter = ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, authorList)
-        binding.spinnerAuthor.setAdapter(authorAdapter)
 
-        binding.spinnerAuthor.setOnItemClickListener { _, _, position, _ ->
-            if (position > 0) {
-                binding.checkboxAuthorAll.isChecked = false
-            } else {
-                binding.checkboxAuthorAll.isChecked = true
-            }
-        }
-    }
     private fun setupDatePickers() {
         val calendar = Calendar.getInstance()
 
@@ -266,7 +257,6 @@ class FilterQCHistoryActivity : AppCompatActivity() {
                     calendar.set(year, month, dayOfMonth)
                     val dateString = dateFormat.format(calendar.time)
                     binding.etFechaFinal.setText(dateString)
-                    // ✅ Desmarcar "All" cuando se selecciona una fecha
                     binding.checkboxInspectionDateAll.isChecked = false
                 },
                 calendar.get(Calendar.YEAR),
@@ -274,7 +264,6 @@ class FilterQCHistoryActivity : AppCompatActivity() {
                 calendar.get(Calendar.DAY_OF_MONTH)
             ).show()
         }
-
     }
 
     private fun setupButtons() {
@@ -286,14 +275,41 @@ class FilterQCHistoryActivity : AppCompatActivity() {
             clearAllFilters()
         }
 
-        // ✅ Growers: desmarcar "All" al abrir el diálogo
+        // QA Inspectors
+        binding.btnQaInspector.setOnClickListener {
+            if (qaInspectors.isEmpty()) {
+                Toast.makeText(this, "No QA Inspector data available", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+
+            if (binding.checkboxQaInspectorAll.isChecked) {
+                binding.checkboxQaInspectorAll.isChecked = false
+            }
+
+            showMultiSelectDialog(
+                title = "Select QA Inspectors",
+                items = qaInspectors,
+                selectedItems = selectedQaInspectors,
+                onConfirm = { selected ->
+                    selectedQaInspectors.clear()
+                    selectedQaInspectors.addAll(selected)
+                    binding.tvQaInspectorChoosed.text = if (selected.isEmpty()) {
+                        ""
+                    } else {
+                        "${selected.size} QA Inspector(s)"
+                    }
+                    binding.checkboxQaInspectorAll.isChecked = selected.isEmpty()
+                }
+            )
+        }
+
+        // Growers
         binding.btnGrowers.setOnClickListener {
             if (uniqueGrowers.isEmpty()) {
                 Toast.makeText(this, "No Grower data available", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
 
-            // ✅ Desmarcar "All" automáticamente al abrir el diálogo
             if (binding.checkboxGrowersAll.isChecked) {
                 binding.checkboxGrowersAll.isChecked = false
             }
@@ -310,20 +326,17 @@ class FilterQCHistoryActivity : AppCompatActivity() {
                     } else {
                         "${selected.size} Grower(s)"
                     }
-                    // ✅ Si no hay selecciones, marcar "All"
                     binding.checkboxGrowersAll.isChecked = selected.isEmpty()
                 }
             )
         }
 
-        // ✅ Customers: desmarcar "All" al abrir el diálogo
         binding.btnCustomers.setOnClickListener {
             if (uniqueCustomers.isEmpty()) {
                 Toast.makeText(this, "No Customer data available", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
 
-            // ✅ Desmarcar "All" automáticamente al abrir el diálogo
             if (binding.checkboxCustomersAll.isChecked) {
                 binding.checkboxCustomersAll.isChecked = false
             }
@@ -340,20 +353,17 @@ class FilterQCHistoryActivity : AppCompatActivity() {
                     } else {
                         "${selected.size} Customer(s)"
                     }
-                    // ✅ Si no hay selecciones, marcar "All"
                     binding.checkboxCustomersAll.isChecked = selected.isEmpty()
                 }
             )
         }
 
-        // ✅ AWB: desmarcar "All" al abrir el diálogo
         binding.btnAwb.setOnClickListener {
             if (uniqueAwbs.isEmpty()) {
                 Toast.makeText(this, "No AWB data available", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
 
-            // ✅ Desmarcar "All" automáticamente al abrir el diálogo
             if (binding.checkboxAwbAll.isChecked) {
                 binding.checkboxAwbAll.isChecked = false
             }
@@ -370,20 +380,17 @@ class FilterQCHistoryActivity : AppCompatActivity() {
                     } else {
                         "${selected.size} AWB(s)"
                     }
-                    // ✅ Si no hay selecciones, marcar "All"
                     binding.checkboxAwbAll.isChecked = selected.isEmpty()
                 }
             )
         }
 
-        // ✅ Order Numbers: desmarcar "All" al abrir el diálogo
         binding.btnOrderNum.setOnClickListener {
             if (uniqueOrderNums.isEmpty()) {
                 Toast.makeText(this, "No Order Number data available", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
 
-            // ✅ Desmarcar "All" automáticamente al abrir el diálogo
             if (binding.checkboxOrderNumAll.isChecked) {
                 binding.checkboxOrderNumAll.isChecked = false
             }
@@ -400,10 +407,13 @@ class FilterQCHistoryActivity : AppCompatActivity() {
                     } else {
                         "${selected.size} Order(s)"
                     }
-                    // ✅ Si no hay selecciones, marcar "All"
                     binding.checkboxOrderNumAll.isChecked = selected.isEmpty()
                 }
             )
+        }
+
+        binding.btnSelectBarcodes.setOnClickListener {
+            showBoxIdsDialog()
         }
 
         binding.btnScanBarcode.setOnClickListener {
@@ -429,12 +439,8 @@ class FilterQCHistoryActivity : AppCompatActivity() {
                         updateBarcodeUI()
                     }
                     binding.etSearch.setText("")
-
                     binding.etSearch.postDelayed({
                         binding.etSearch.requestFocus()
-                        val imm = getSystemService(android.content.Context.INPUT_METHOD_SERVICE)
-                                as android.view.inputmethod.InputMethodManager
-                        imm.showSoftInput(binding.etSearch, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
                     }, 100)
                 }
                 true
@@ -460,6 +466,7 @@ class FilterQCHistoryActivity : AppCompatActivity() {
             } else false
         }
     }
+
     private fun openBarcodeScanner() {
         val intent = Intent(this, BarcodeScannerActivity::class.java).apply {
             putExtra("ORDER_CODE", "History Filter Scan")
@@ -481,6 +488,75 @@ class FilterQCHistoryActivity : AppCompatActivity() {
         } else {
             barcodes.joinToString(", ")
         }
+    }
+
+    private fun showBoxIdsDialog() {
+        if (uniqueBoxIds.isEmpty()) {
+            Toast.makeText(this, "No Box IDs available", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        val dialog = Dialog(this)
+        val dialogBinding = DialogMultiSelectBinding.inflate(layoutInflater)
+        dialog.setContentView(dialogBinding.root)
+
+        dialog.window?.setLayout(
+            WindowManager.LayoutParams.MATCH_PARENT,
+            WindowManager.LayoutParams.MATCH_PARENT
+        )
+
+        dialogBinding.tvDialogTitle.text = "Select Box IDs"
+
+        val tempSelectedBarcodes = barcodes.toMutableList()
+        val adapter = ArrayAdapter(this, android.R.layout.simple_list_item_1, uniqueBoxIds)
+        dialogBinding.listView.adapter = adapter
+
+        fun updateSelectedText() {
+            dialogBinding.tvListOfItems.text = if (tempSelectedBarcodes.isEmpty()) {
+                "No items selected"
+            } else {
+                tempSelectedBarcodes.joinToString(", ") { "[$it]" }
+            }
+        }
+        updateSelectedText()
+
+        dialogBinding.searchView.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
+            override fun onQueryTextSubmit(query: String?): Boolean = false
+
+            override fun onQueryTextChange(newText: String?): Boolean {
+                adapter.filter.filter(newText)
+                return true
+            }
+        })
+
+        dialogBinding.listView.setOnItemClickListener { _, _, position, _ ->
+            val item = adapter.getItem(position) ?: return@setOnItemClickListener
+
+            if (tempSelectedBarcodes.contains(item)) {
+                tempSelectedBarcodes.remove(item)
+            } else {
+                tempSelectedBarcodes.add(item)
+            }
+            updateSelectedText()
+        }
+
+        dialogBinding.btnDelete.setOnClickListener {
+            tempSelectedBarcodes.clear()
+            updateSelectedText()
+        }
+
+        dialogBinding.btnCancel.setOnClickListener {
+            dialog.dismiss()
+        }
+
+        dialogBinding.btnContinue.setOnClickListener {
+            barcodes.clear()
+            barcodes.addAll(tempSelectedBarcodes)
+            updateBarcodeUI()
+            dialog.dismiss()
+        }
+
+        dialog.show()
     }
 
     private fun showMultiSelectDialog(
@@ -554,13 +630,14 @@ class FilterQCHistoryActivity : AppCompatActivity() {
         isClearing = true
 
         filterDictionary.clear()
+        selectedQaInspectors.clear()
         selectedGrowers.clear()
         selectedCustomers.clear()
         selectedAwbs.clear()
         selectedOrderNums.clear()
         barcodes.clear()
 
-        filterDictionary["Author"] = ""
+        filterDictionary["QaInspector"] = ""
         filterDictionary["Grower"] = ""
         filterDictionary["Customer"] = ""
         filterDictionary["AWB"] = ""
@@ -570,9 +647,9 @@ class FilterQCHistoryActivity : AppCompatActivity() {
         filterDictionary["Fechaf"] = ""
         filterDictionary["Barcodes"] = ""
 
-        binding.checkboxAuthorAll.isChecked = true
-        binding.spinnerAuthor.setText("", false)
-        binding.spinnerAuthor.isEnabled = true
+        binding.checkboxQaInspectorAll.isChecked = true
+        binding.tvQaInspectorChoosed.text = ""
+        binding.btnQaInspector.isEnabled = true
 
         binding.checkboxGrowersAll.isChecked = true
         binding.tvGrowerChoosed.text = ""
@@ -614,14 +691,16 @@ class FilterQCHistoryActivity : AppCompatActivity() {
         Toast.makeText(this, "All filters cleared", Toast.LENGTH_SHORT).show()
         finish()
     }
+
     private fun loadExistingFilters() {
         try {
-            val authorValue = filterDictionary["Author"] ?: ""
-            if (authorValue.isEmpty()) {
-                binding.checkboxAuthorAll.isChecked = true
+            val qaInspectorValue = filterDictionary["QaInspector"] ?: ""
+            if (qaInspectorValue.isEmpty()) {
+                binding.checkboxQaInspectorAll.isChecked = true
             } else {
-                val displayValue = if (authorValue == "S") "SOURCING" else authorValue
-                binding.spinnerAuthor.setText(displayValue, false)
+                selectedQaInspectors.clear()
+                selectedQaInspectors.addAll(deserializeFilterStringList(qaInspectorValue))
+                binding.tvQaInspectorChoosed.text = "${selectedQaInspectors.size} QA Inspector(s)"
             }
 
             val growerValue = filterDictionary["Grower"] ?: ""
@@ -690,16 +769,12 @@ class FilterQCHistoryActivity : AppCompatActivity() {
 
     private fun saveFilters() {
         try {
-
-            val authorValue = if (binding.checkboxAuthorAll.isChecked) {
+            val qaInspectorValues = if (binding.checkboxQaInspectorAll.isChecked) {
                 ""
             } else {
-                val selected = binding.spinnerAuthor.text.toString()
-                when (selected) {
-                    "SOURCING" -> "S"
-                    else -> selected
-                }
+                serializeFilterStringList(selectedQaInspectors)
             }
+
             val growerValues = if (binding.checkboxGrowersAll.isChecked) {
                 ""
             } else {
@@ -750,7 +825,7 @@ class FilterQCHistoryActivity : AppCompatActivity() {
 
             val barcodesValue = barcodes.joinToString(",")
 
-            filterDictionary["Author"] = authorValue
+            filterDictionary["QaInspector"] = qaInspectorValues
             filterDictionary["Grower"] = growerValues
             filterDictionary["Customer"] = customerValues
             filterDictionary["AWB"] = awbValues

@@ -146,19 +146,11 @@ class SettingsActivity : AppCompatActivity() {
     private fun performLogoutAndSaveUrl(newUrl: String) {
         lifecycleScope.launch {
             try {
-                // Intentar hacer logout en el servidor
-                // val response = servicio.logout(UserSession.getUserId())
-
-                // Limpiar sesión local
                 UserSession.clearSession()
                 Constants.token = ""
                 sessionManager.clearCredentials()
-
-                // Guardar la nueva URL
                 sessionManager.saveUrl(newUrl)
                 Constants.BASE_URL = newUrl
-
-                // Ir al login
                 goToLogin()
 
             } catch (e: Exception) {
@@ -169,8 +161,6 @@ class SettingsActivity : AppCompatActivity() {
                         Toast.LENGTH_LONG
                     ).show()
                 }
-
-                // Aún así, limpiar sesión local y continuar
                 UserSession.clearSession()
                 Constants.token = ""
                 sessionManager.clearCredentials()

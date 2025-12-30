@@ -150,7 +150,6 @@ class RestClient {
         }
     }
 
-    // ==================== API METHODS ====================
 
     suspend fun healthCheck(): Result<String> {
         return try {
@@ -670,7 +669,46 @@ class RestClient {
             Result.failure(Exception("Failed to send box: ${e.message}"))
         }
     }
+    suspend fun sendBoxToSent(
+        idBox: String,
+        ordNum: Int,
+        awbNum: String,
+        telexNum: String,
+        num: Int,
+        issueC: String,
+        actionC: String,
+        issueDes: String,
+        qaInsp: String,
+        listImages: List<String>,
+        listVideos: List<String>,
+        inspectStatus: Int,
+        barcodesToI: String
+    ): Result<Unit> {
+        return try {
+            ensureToken().onFailure { return Result.failure(it) }
 
+            val request = Entities.SendBoxRequestToInpect(
+                idBox = idBox,
+                ordNum = ordNum,
+                awbNum = awbNum,
+                telexNum = telexNum,
+                num = num,
+                issueC = issueC,
+                actionC = actionC,
+                issueDes = issueDes,
+                qaInsp = qaInsp,
+                listImages = listImages,
+                listVideos = listVideos,
+                inspectStatus = inspectStatus,
+                barcodesToI = barcodesToI
+            )
+
+            val response = apiService.sendBoxToServer(getAuthorizationHeader(), request)
+            handleResponse(response, "Failed to send box")
+        } catch (e: Exception) {
+            Result.failure(Exception("Failed to send box: ${e.message}"))
+        }
+    }
     suspend fun sendGroupInspection(inspections: String): Result<String> {
         return try {
             ensureToken().onFailure { return Result.failure(it) }
@@ -845,6 +883,51 @@ class RestClient {
             Result.failure(Exception("Error getting release boxes: ${e.message}"))
         }
     }
+    suspend fun releaseBoxesBatch(boxIds: List<Int>, user: String): Result<Entities.SimpleReleaseResponse> {
+        return try {
+            ensureToken().onFailure { return Result.failure(it) }
 
+            val request = Entities.ReleaseBoxesRequest(
+                boxIds = boxIds,
+                user = user
+            )
+
+            val response = apiService.releaseBoxesBatch(
+                authorization = getAuthorizationHeader(),
+                request = request
+            )
+
+            if (response.isSuccessful && response.body() != null) {
+                Result.success(response.body()!!)
+            } else {
+                val errorBody = response.errorBody()?.string()
+                Result.failure(Exception("Release batch failed: ${response.code()} - $errorBody"))
+            }
+
+        } catch (e: Exception) {
+            Result.failure(Exception("Error releasing boxes batch: ${e.message}"))
+        }
+    }
+    suspend fun deleteReleasedBox(boxNumber: Int, username: String): Result<Entities.ReleaseBoxResponse> {
+        return try {
+            ensureToken().onFailure { return Result.failure(it) }
+
+            val response = apiService.deleteReleasedBox(
+                authorization = getAuthorizationHeader(),
+                boxNumber = boxNumber,
+                username = username
+            )
+
+            if (response.isSuccessful && response.body() != null) {
+                Result.success(response.body()!!)
+            } else {
+                val errorBody = response.errorBody()?.string()
+                Result.failure(Exception("Delete failed: ${response.code()} - $errorBody"))
+            }
+
+        } catch (e: Exception) {
+            Result.failure(Exception("Error deleting released box: ${e.message}"))
+        }
+    }
 
 }

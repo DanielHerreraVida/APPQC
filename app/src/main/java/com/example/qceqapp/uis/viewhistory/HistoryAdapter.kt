@@ -172,12 +172,27 @@ class HistoryAdapter(
             val filterDictionary = deserializeFilterDictionary(constraint.toString())
             var filteredResults = originalList.toList()
 
+            filterDictionary["QaInspector"]?.let { qaInspectorJson ->
+                if (qaInspectorJson.isNotEmpty()) {
+                    val qaInspectorList = deserializeFilterStringList(qaInspectorJson)
+                    if (qaInspectorList.isNotEmpty()) {
+                        filteredResults = filteredResults.filter { item ->
+                            qaInspectorList.any { inspector ->
+                                item.qaInspector?.equals(inspector, ignoreCase = true) == true
+                            }
+                        }
+                    }
+                }
+            }
+
             filterDictionary["Grower"]?.let { growerJson ->
                 if (growerJson.isNotEmpty()) {
                     val growerCodes = deserializeFilterStringList(growerJson)
                     if (growerCodes.isNotEmpty()) {
                         filteredResults = filteredResults.filter { item ->
-                            growerCodes.contains(item.grower)
+                            growerCodes.any { grower ->
+                                item.grower?.equals(grower, ignoreCase = true) == true
+                            }
                         }
                     }
                 }
@@ -188,17 +203,22 @@ class HistoryAdapter(
                     val customerCodes = deserializeFilterStringList(customerJson)
                     if (customerCodes.isNotEmpty()) {
                         filteredResults = filteredResults.filter { item ->
-                            customerCodes.contains(item.customerId)
+                            customerCodes.any { customer ->
+                                item.customerId?.equals(customer, ignoreCase = true) == true
+                            }
                         }
                     }
                 }
             }
+
             filterDictionary["AWB"]?.let { awbJson ->
                 if (awbJson.isNotEmpty()) {
                     val awbList = deserializeFilterStringList(awbJson)
                     if (awbList.isNotEmpty()) {
                         filteredResults = filteredResults.filter { item ->
-                            awbList.contains(item.bxAWB)
+                            awbList.any { awb ->
+                                item.bxAWB?.equals(awb, ignoreCase = true) == true
+                            }
                         }
                     }
                 }
@@ -209,7 +229,9 @@ class HistoryAdapter(
                     val orderNumList = deserializeFilterStringList(orderNumJson)
                     if (orderNumList.isNotEmpty()) {
                         filteredResults = filteredResults.filter { item ->
-                            orderNumList.contains(item.orderNum)
+                            orderNumList.any { orderNum ->
+                                item.bxNUM?.equals(orderNum, ignoreCase = true) == true
+                            }
                         }
                     }
                 }
@@ -217,19 +239,27 @@ class HistoryAdapter(
 
             filterDictionary["Barcodes"]?.let { barcodesValue ->
                 if (barcodesValue.isNotEmpty()) {
-                    val barcodeList = barcodesValue.split(",").filter { it.isNotBlank() }
+                    val barcodeList = barcodesValue.split(",")
+                        .map { it.trim() }
+                        .filter { it.isNotBlank() }
+
                     if (barcodeList.isNotEmpty()) {
                         filteredResults = filteredResults.filter { item ->
-                            val boxIds = item.boxId?.split(',')?.map { it.trim() } ?: emptyList()
-                            boxIds.any { boxId ->
-                                barcodeList.any { barcode ->
-                                    boxId.contains(barcode, ignoreCase = true)
+                            val itemBarcodes = item.boxId?.split(',')
+                                ?.map { it.trim() }
+                                ?.filter { it.isNotBlank() }
+                                ?: emptyList()
+
+                            barcodeList.any { filterBarcode ->
+                                itemBarcodes.any { itemBarcode ->
+                                    itemBarcode.equals(filterBarcode, ignoreCase = true)
                                 }
                             }
                         }
                     }
                 }
             }
+
             filterDictionary["InspectionState"]?.let { inspectionState ->
                 if (inspectionState.isNotEmpty()) {
                     filteredResults = filteredResults.filter {
@@ -238,13 +268,7 @@ class HistoryAdapter(
                 }
             }
 
-            filterDictionary["Author"]?.let { author ->
-                if (author.isNotEmpty()) {
-                    filteredResults = filteredResults.filter {
-                        it.author?.equals(author, ignoreCase = true) == true
-                    }
-                }
-            }
+            // filterDictionary["Author"]?.let { ... }
 
             val fechaInicial = filterDictionary["Fechai"]
             val fechaFinal = filterDictionary["Fechaf"]

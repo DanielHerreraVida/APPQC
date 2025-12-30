@@ -43,6 +43,7 @@
         <activity
             android:name=".uis.login.LoginActivity"
             android:exported="true"
+            android:screenOrientation="portrait"
             android:theme="@style/Theme.QCEQAPP">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -53,6 +54,7 @@
         <activity
             android:name=".uis.main.MainActivity"
             android:exported="false"
+            android:screenOrientation="portrait"
             android:theme="@style/Theme.QCEQAPP" />
 
         <activity
@@ -64,62 +66,82 @@
         <activity
             android:name=".uis.toinspect.FiltersActivity"
             android:exported="false"
+            android:screenOrientation="portrait"
             android:theme="@style/Theme.QCEQAPP" />
 
         <activity
             android:name=".uis.infobox.InfoBoxActivity"
             android:exported="false"
+            android:screenOrientation="portrait"
             android:theme="@style/Theme.QCEQAPP" />
 
         <activity
             android:name=".uis.toinspect.ScanOrder"
             android:exported="false"
+            android:screenOrientation="portrait"
             android:theme="@style/Theme.QCEQAPP" />
 
         <activity
             android:name=".uis.viewhistory.FilterQCHistoryActivity"
             android:exported="false"
+            android:screenOrientation="portrait"
             android:theme="@style/Theme.QCEQAPP" />
 
         <activity
             android:name=".uis.QCBoxes.QCBoxesActivity"
             android:exported="false"
+            android:screenOrientation="portrait"
             android:theme="@style/Theme.QCEQAPP" />
 
         <activity
             android:name=".uis.QCInspection.QCInspectionActivity"
             android:label="QC Inspection"
             android:exported="false"
+            android:screenOrientation="portrait"
             android:theme="@style/Theme.QCEQAPP"/>
 
         <activity
             android:name=".uis.QCInspection.QCMediaActivity"
             android:label="QC Inspection"
             android:exported="false"
+            android:screenOrientation="portrait"
             android:theme="@style/Theme.QCEQAPP"/>
 
         <activity
             android:name=".uis.QCInspection.QCCompositionActivity"
             android:label="QC Inspection"
             android:exported="false"
+            android:screenOrientation="portrait"
             android:theme="@style/Theme.AppCompat.Light.NoActionBar" />
 
         <activity
             android:name=".uis.QCOrderSent.QCOrderSentActivity"
             android:label="View history"
             android:exported="false"
+            android:screenOrientation="portrait"
             android:theme="@style/Theme.QCEQAPP"/>
 
         <activity
             android:name=".uis.QCOrderSent.SendInspectionActivity"
             android:exported="false"
+            android:screenOrientation="portrait"
             android:theme="@style/Theme.QCEQAPP" />
 
         <activity
             android:name=".uis.main.SettingsActivity"
             android:exported="false"
+            android:screenOrientation="portrait"
             android:theme="@style/Theme.QCEQAPP" />
-
+        <activity
+            android:name=".uis.scanner.CameraActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.QCEQAPP" />
+        <activity
+            android:name=".uis.scanner.CameraVideoActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.QCEQAPP" />
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.provider"

@@ -24,14 +24,12 @@ class BarcodeScannerActivity : AppCompatActivity() {
     private var orderNumber: String? = null
     private var scanType: String? = null
 
-    // ✅ Launcher para solicitar permiso de cámara
     private val requestCameraPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { isGranted ->
         if (isGranted) {
             initializeScanner()
         } else {
-            // Permiso denegado
             AlertDialog.Builder(this)
                 .setTitle("Camera Permission Required")
                 .setMessage("Camera permission is required to scan barcodes. Please grant the permission in settings.")
@@ -60,11 +58,9 @@ class BarcodeScannerActivity : AppCompatActivity() {
     private fun checkCameraPermission() {
         when {
             PermissionHelper.hasCameraPermission(this) -> {
-                // Ya tiene el permiso
                 initializeScanner()
             }
             shouldShowRequestPermissionRationale(Manifest.permission.CAMERA) -> {
-                // Mostrar explicación
                 AlertDialog.Builder(this)
                     .setTitle("Camera Permission Required")
                     .setMessage("Camera permission is needed to scan barcodes. Please grant the permission to continue.")
@@ -77,7 +73,6 @@ class BarcodeScannerActivity : AppCompatActivity() {
                     .show()
             }
             else -> {
-                // Solicitar permiso directamente
                 requestCameraPermissionLauncher.launch(Manifest.permission.CAMERA)
             }
         }

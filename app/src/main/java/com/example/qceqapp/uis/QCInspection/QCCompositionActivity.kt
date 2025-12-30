@@ -268,7 +268,7 @@ class QCCompositionActivity : AppCompatActivity() {
 
     private fun updateIssuesDisplay() {
         tvIssueChoosed.text = if (selectedIssues.isNotEmpty()) {
-            selectedIssues.joinToString(", ") { it.descriptionIen }
+            selectedIssues.joinToString(", ") { it.descriptionIes }
         } else {
             "No issues selected..."
         }

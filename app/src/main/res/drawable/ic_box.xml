@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+
+    <!-- Cara frontal (izquierda) - tono oscuro -->
+    <path
+        android:fillColor="#8B6F47"
+        android:pathData="M3,10 L3,20 L12,23 L12,13 Z" />
+
+    <!-- Cara derecha - tono medio -->
+    <path
+        android:fillColor="#B8956D"
+        android:pathData="M12,13 L12,23 L21,20 L21,10 Z" />
+
+    <!-- Tapa superior - tono claro -->
+    <path
+        android:fillColor="#D4B896"
+        android:pathData="M3,10 L12,7 L21,10 L12,13 Z" />
+
+    <!-- Cinta adhesiva en la tapa - parte izquierda -->
+    <path
+        android:fillColor="#E8D4B8"
+        android:pathData="M7,9 L7,11.5 L11,13 L11,10.5 Z" />
+
+    <!-- Cinta adhesiva en la tapa - parte derecha -->
+    <path
+        android:fillColor="#D9C5A8"
+        android:pathData="M13,10.5 L13,13 L17,11.5 L17,9 Z" />
+
+    <!-- Solapa derecha de la tapa -->
+    <path
+        android:fillColor="#EBD9C3"
+        android:pathData="M18,9 L21,10 L20,11 L18,10.5 Z" />
+
+    <!-- Cinta adhesiva vertical - cara frontal -->
+    <path
+        android:fillColor="#E8D4B8"
+        android:pathData="M9,14 L9,21.5 L11,22.5 L11,15 Z" />
+
+    <!-- Cinta adhesiva vertical - cara derecha -->
+    <path
+        android:fillColor="#D9C5A8"
+        android:pathData="M13,15 L13,22.5 L15,21.5 L15,14 Z" />
+
+    <!-- Bordes de la caja -->
+    <path
+        android:strokeColor="#6B5738"
+        android:strokeWidth="0.8"
+        android:fillColor="@android:color/transparent"
+        android:pathData="M3,10 L3,20 L12,23 L21,20 L21,10 L12,7 Z M3,10 L12,13 L21,10" />
+
+</vector>

@@ -26,6 +26,7 @@ class FiltersActivity : AppCompatActivity() {
     private var allGrowers: List<Entities.QCGrowerResponse> = emptyList()
     private var allCustomers: List<Entities.QCCustomerResponse> = emptyList()
     private var allAuthors: List<String> = emptyList()
+    private var allBoxIds: List<String> = emptyList()
 
     private val barcodeScannerLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -47,6 +48,7 @@ class FiltersActivity : AppCompatActivity() {
         const val EXTRA_GROWERS = "extra_growers"
         const val EXTRA_CUSTOMERS = "extra_customers"
         const val EXTRA_AUTHORS = "extra_authors"
+        const val EXTRA_BOX_IDS = "extra_box_ids"
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -77,9 +79,12 @@ class FiltersActivity : AppCompatActivity() {
             allCustomers = it
         }
 
-        // 🆕 Cargar authors de la API
         intent.getStringArrayListExtra(EXTRA_AUTHORS)?.let {
             allAuthors = it
+        }
+
+        intent.getStringArrayListExtra(EXTRA_BOX_IDS)?.let {
+            allBoxIds = it.distinct().sorted()
         }
     }
 
@@ -125,6 +130,7 @@ class FiltersActivity : AppCompatActivity() {
             binding.tvGrowerSelected.isEnabled = true
             updateFilterCount()
         }
+
         binding.cbCustomersAll.setOnCheckedChangeListener { _, isChecked ->
             if (isChecked) {
                 selectedCustomers.clear()
@@ -143,6 +149,7 @@ class FiltersActivity : AppCompatActivity() {
             updateFilterCount()
         }
     }
+
     private fun enableRadioGroup(radioGroup: android.widget.RadioGroup, enabled: Boolean) {
         for (i in 0 until radioGroup.childCount) {
             radioGroup.getChildAt(i).isEnabled = enabled
@@ -207,6 +214,11 @@ class FiltersActivity : AppCompatActivity() {
             }
             showGrowersDialog()
         }
+
+        binding.btnSelectBarcodes.setOnClickListener {
+            showBoxIdsDialog()
+        }
+
         binding.etSearch.setOnKeyListener { _, keyCode, event ->
             if (event.action == android.view.KeyEvent.ACTION_DOWN &&
                 keyCode == android.view.KeyEvent.KEYCODE_ENTER) {
@@ -250,6 +262,7 @@ class FiltersActivity : AppCompatActivity() {
                 true
             } else false
         }
+
         binding.btnCustomers.setOnClickListener {
             if (binding.cbCustomersAll.isChecked) {
                 binding.cbCustomersAll.isChecked = false
@@ -266,6 +279,7 @@ class FiltersActivity : AppCompatActivity() {
                 binding.etSearch.requestFocus()
             }, 100)
         }
+
         binding.spinnerAuthor.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
             var isFirstSelection = true
 
@@ -284,6 +298,7 @@ class FiltersActivity : AppCompatActivity() {
 
             override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
         }
+
         binding.radioGroupSaved.setOnCheckedChangeListener { _, checkedId ->
             if (checkedId != -1) {
                 binding.cbSavedAll.isChecked = false
@@ -299,6 +314,41 @@ class FiltersActivity : AppCompatActivity() {
             putExtra("TYPE", "filter")
         }
         barcodeScannerLauncher.launch(intent)
+    }
+
+    private fun showBoxIdsDialog() {
+        if (allBoxIds.isEmpty()) {
+            android.widget.Toast.makeText(this, "No Box IDs available", android.widget.Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        val dialog = BottomSheetDialog(this)
+        val dialogBinding = DialogMultiSelectionBinding.inflate(layoutInflater)
+        dialog.setContentView(dialogBinding.root)
+
+        setupMultiSelectionDialog(
+            dialogBinding,
+            allBoxIds,
+            allBoxIds,
+            scannedBarcodes,
+            "Box IDs"
+        ) { updatedList ->
+            scannedBarcodes.clear()
+            scannedBarcodes.addAll(updatedList)
+            updateBarcodesText()
+            updateFilterCount()
+            dialog.dismiss()
+        }
+
+        dialogBinding.btnDialogCancel.setOnClickListener {
+            dialog.dismiss()
+        }
+
+        dialogBinding.btnDialogClose.setOnClickListener {
+            dialog.dismiss()
+        }
+
+        dialog.show()
     }
 
     private fun showGrowersDialog() {
@@ -378,33 +428,63 @@ class FiltersActivity : AppCompatActivity() {
     ) {
         dialogBinding.tvDialogTitle.text = "Select $title"
 
-        val adapter = ArrayAdapter(this, android.R.layout.simple_list_item_multiple_choice, displayItems)
+        val originalDisplayItems = displayItems.toList()
+        val originalItemCodes = itemCodes.toList()
+        val currentlySelected = selectedItems.toMutableSet()
+
+        val adapter = ArrayAdapter(this, android.R.layout.simple_list_item_multiple_choice, displayItems.toMutableList())
         dialogBinding.listViewItems.adapter = adapter
         dialogBinding.listViewItems.choiceMode = ListView.CHOICE_MODE_MULTIPLE
 
-        selectedItems.forEach { selected ->
-            val position = itemCodes.indexOf(selected)
-            if (position >= 0) {
-                dialogBinding.listViewItems.setItemChecked(position, true)
+        fun updateCheckStates() {
+            for (i in 0 until dialogBinding.listViewItems.count) {
+                val item = adapter.getItem(i)
+                val originalIndex = originalDisplayItems.indexOf(item)
+                if (originalIndex >= 0) {
+                    val code = originalItemCodes[originalIndex]
+                    dialogBinding.listViewItems.setItemChecked(i, currentlySelected.contains(code))
+                }
             }
         }
 
+        updateCheckStates()
         updateSelectedCount(dialogBinding, dialogBinding.listViewItems)
 
-        dialogBinding.listViewItems.setOnItemClickListener { _, _, _, _ ->
-            updateSelectedCount(dialogBinding, dialogBinding.listViewItems)
+        dialogBinding.listViewItems.setOnItemClickListener { _, _, position, _ ->
+            val item = adapter.getItem(position)
+            val originalIndex = originalDisplayItems.indexOf(item)
+
+            if (originalIndex >= 0) {
+                val code = originalItemCodes[originalIndex]
+
+                if (dialogBinding.listViewItems.isItemChecked(position)) {
+                    currentlySelected.add(code)
+                } else {
+                    currentlySelected.remove(code)
+                }
+
+                updateSelectedCount(dialogBinding, dialogBinding.listViewItems)
+            }
         }
 
         dialogBinding.etDialogSearch.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
                 adapter.filter.filter(s)
+
                 dialogBinding.btnClearSearch.visibility = if (s.isNullOrEmpty()) {
                     android.view.View.GONE
                 } else {
                     android.view.View.VISIBLE
                 }
+
+                dialogBinding.listViewItems.post {
+                    updateCheckStates()
+                    updateSelectedCount(dialogBinding, dialogBinding.listViewItems)
+                }
             }
+
             override fun afterTextChanged(s: Editable?) {}
         })
 
@@ -413,21 +493,13 @@ class FiltersActivity : AppCompatActivity() {
         }
 
         dialogBinding.btnDialogClear.setOnClickListener {
-            for (i in 0 until dialogBinding.listViewItems.count) {
-                dialogBinding.listViewItems.setItemChecked(i, false)
-            }
-            adapter.notifyDataSetChanged()
+            currentlySelected.clear()
+            updateCheckStates()
             updateSelectedCount(dialogBinding, dialogBinding.listViewItems)
         }
 
         dialogBinding.btnDialogApply.setOnClickListener {
-            val selected = mutableListOf<String>()
-            for (i in 0 until dialogBinding.listViewItems.count) {
-                if (dialogBinding.listViewItems.isItemChecked(i)) {
-                    selected.add(itemCodes[i])
-                }
-            }
-            onSelectionChanged(selected)
+            onSelectionChanged(currentlySelected.toList())
         }
     }
 

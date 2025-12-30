@@ -57,7 +57,6 @@
 
         </LinearLayout>
 
-        <!-- Ícono de guardado (ocultado por defecto) -->
         <ImageView
             android:id="@+id/ivIsSaved"
             android:layout_width="24dp"
@@ -66,37 +65,46 @@
             app:tint="@color/green"
             android:visibility="gone"
             android:layout_marginEnd="8dp" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnQA"
+        <!-- Contenedor QA + Delete -->
+        <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginEnd="8dp"
-            android:backgroundTint="@color/blue"
-            android:gravity="center"
-            android:includeFontPadding="false"
-            android:insetTop="0dp"
-            android:insetBottom="0dp"
-            android:lineSpacingMultiplier="0.8"
-            android:maxLines="3"
-            android:padding="2dp"
-            android:text="USER"
-            android:textColor="@color/white"
-            android:textSize="9sp"
-            app:cornerRadius="999dp" />
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnDelete"
-            android:layout_width="52dp"
-            android:layout_height="52dp"
-            android:text="✕"
-            android:textSize="18sp"
-            android:textColor="@color/white"
-            android:backgroundTint="@color/red"
-            app:cornerRadius="24dp"
-            android:insetTop="0dp"
-            android:insetBottom="0dp"
-            android:visibility="gone" />
+            <!-- Burbuja QA -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnQA"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="6dp"
+                android:backgroundTint="@color/blue"
+                android:gravity="center"
+                android:includeFontPadding="false"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:lineSpacingMultiplier="0.8"
+                android:maxLines="3"
+                android:padding="4dp"
+                android:text="USER"
+                android:textColor="@color/white"
+                android:textSize="9sp"
+                app:cornerRadius="999dp" />
+
+            <ImageButton
+                android:id="@+id/btnDelete"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:background="@drawable/bg_delete_circle"
+                android:src="@drawable/ic_delete"
+                android:scaleType="centerInside"
+                android:adjustViewBounds="true"
+                android:tint="@color/white"
+                android:padding="6dp"
+                android:contentDescription="Delete" />
+
+
+        </LinearLayout>
 
 
     </LinearLayout>

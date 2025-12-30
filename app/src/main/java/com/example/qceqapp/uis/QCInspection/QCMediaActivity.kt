@@ -20,7 +20,6 @@ class QCMediaActivity : AppCompatActivity() {
     private val viewModel: QCMediaViewModel by viewModels()
     private var isNavigating = false
 
-    // ✅ Launcher para solicitar permisos con tipo explícito
     private val requestPermissionsLauncher: ActivityResultLauncher<Array<String>> =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissions: Map<String, Boolean> ->
             val allGranted = permissions.entries.all { it.value }
@@ -28,7 +27,6 @@ class QCMediaActivity : AppCompatActivity() {
             if (allGranted) {
                 Toast.makeText(this, "Permissions granted", Toast.LENGTH_SHORT).show()
             } else {
-                // Algunos permisos fueron denegados
                 AlertDialog.Builder(this)
                     .setTitle("Permissions Required")
                     .setMessage("Camera and storage permissions are required for this feature. Some functionality may not work without these permissions.")
@@ -44,7 +42,6 @@ class QCMediaActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_qc_media)
 
-        // ✅ Verificar permisos al inicio
         if (!PermissionHelper.hasAllPermissions(this)) {
             requestPermissionsLauncher.launch(PermissionHelper.getRequiredPermissions())
         }

@@ -52,6 +52,13 @@ interface ApiService {
         @Header("Authorization") authorization: String,
         @Body request: Entities.SendQCHistorySentRequest
     ): Response<Unit>
+
+    @POST("api/box/send")
+    suspend fun sendBoxToServer(
+        @Header("Authorization") authorization: String,
+        @Body request: Entities.SendBoxRequestToInpect
+    ): Response<Unit>
+
     @POST("api/box/rejbox")
     suspend fun rejectBox(
         @Header("Authorization") authorization: String,
@@ -185,5 +192,15 @@ interface ApiService {
     suspend fun getReleasedBoxes(
         @Header("Authorization") authorization: String
     ): Response<List<Entities.ReleaseBoxHistoryResponse>>
-
+    @POST("api/box/release/boxes")
+    suspend fun releaseBoxesBatch(
+        @Header("Authorization") authorization: String,
+        @Body request: Entities.ReleaseBoxesRequest
+    ): Response<Entities.SimpleReleaseResponse>
+    @POST("api/box/release/delete/{boxNumber}/{username}")
+    suspend fun deleteReleasedBox(
+        @Header("Authorization") authorization: String,
+        @Path("boxNumber") boxNumber: Int,
+        @Path("username") username: String
+    ): Response<Entities.ReleaseBoxResponse>
 }

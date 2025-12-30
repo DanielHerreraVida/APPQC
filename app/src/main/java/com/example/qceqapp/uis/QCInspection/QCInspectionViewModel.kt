@@ -99,13 +99,14 @@ class QCInspectionViewModel : ViewModel() {
         qaInsp: String,
         listImages: List<String>,
         listVideos: List<String>,
-        inspectStatus: String,
+        inspectStatus: Int,
         barcodesToI: String
     ): Result<String> {
         return try {
+//            val result = service.sendBox(
+                val result = service.sendQCHistorySent(
 
-            val result = service.sendBox(
-                idBox = idBox,
+                    idBox = idBox,
                 ordNum = ordNum,
                 awbNum = awbNum,
                 telexNum = telexNum,

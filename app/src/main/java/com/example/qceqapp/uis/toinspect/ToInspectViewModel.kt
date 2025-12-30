@@ -122,18 +122,15 @@ class ToInspectViewModel : ViewModel() {
                 val ordersList = result.getOrDefault(emptyList())
                 _orders.value = ordersList
                 _filteredOrders.value = ordersList
-                Log.d(TAG, "Orders loaded: ${ordersList.size}")
                 true
             } else {
                 val error = result.exceptionOrNull()
-                Log.e(TAG, "Error loading orders", error)
                 _error.value = "Error loading orders: ${error?.message}"
                 false
             }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            Log.e(TAG, "Exception loading orders", e)
             _error.value = "Failed to load orders: ${e.message}"
             false
         }
@@ -250,26 +247,19 @@ private fun matchesFilter(order: Entities.QCOrderResponse, filterData: Entities.
             }
         }
 
-        // ✅ CORRECCIÓN: Dividir los boxIds y comparar exactamente
         if (filterData.barcodes.isNotEmpty()) {
             val scannedBarcodes = filterData.barcodes.split(",").map { it.trim() }
-
-            // Dividir los boxIds en una lista individual
             val orderBoxIds = order.boxId?.split(",")?.map { it.trim() } ?: emptyList()
             val orderBoxIdsToInspect = order.boxIdToInspect?.split(",")?.map { it.trim() } ?: emptyList()
-
-            // Comparar exactamente cada código escaneado con cada boxId individual
             val barcodeMatches = scannedBarcodes.any { scannedBarcode ->
                 orderBoxIds.any { it.equals(scannedBarcode, ignoreCase = true) } ||
                         orderBoxIdsToInspect.any { it.equals(scannedBarcode, ignoreCase = true) }
             }
-
             if (!barcodeMatches) return false
         }
 
         return true
     } catch (e: Exception) {
-        Log.e("ToInspectViewModel", "Filter error", e)
         return false
     }
 }
@@ -364,7 +354,6 @@ private fun matchesFilter(order: Entities.QCOrderResponse, filterData: Entities.
         return try {
             UserSession.getUsername() ?: "Unknown"
         } catch (e: Exception) {
-            Log.e(TAG, "Error getting username from session", e)
             "Unknown"
         }
     }

@@ -1,5 +1,6 @@
 package com.example.qceqapp.uis.torelease
 
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.core.view.isVisible
@@ -17,20 +18,24 @@ class ReleaseAdapter(
     private val onDeleteClick: (Entities.ReleaseBoxHistoryResponse) -> Unit
 ) : RecyclerView.Adapter<ReleaseAdapter.ReleaseViewHolder>() {
 
+    companion object {
+        private const val TAG = "ReleaseAdapter"
+    }
+
     inner class ReleaseViewHolder(private val binding: ItemReleaseBinding) :
         RecyclerView.ViewHolder(binding.root) {
 
         fun bind(box: Entities.ReleaseBoxHistoryResponse) {
+            Log.d(TAG, "Binding box: ${box.box} - ${box.user} - ${box.numOrder}")
+
             binding.tvOrderCode.text = "Box: ${box.box}"
             binding.tvOrderNumber.text = if (box.numOrder.isNotEmpty()) {
                 "Order: ${box.numOrder}"
             } else {
                 "No order assigned"
             }
-            binding.ivAuthor.setImageResource(R.drawable.ic_flower)
-            binding.ivAuthor.setColorFilter(
-                binding.root.context.getColor(R.color.green)
-            )
+            binding.ivAuthor.setImageResource(R.drawable.ic_caja_release)
+
             val rawUser = box.user.uppercase().trim()
             val userName = formatUserName(rawUser)
 
@@ -43,6 +48,7 @@ class ReleaseAdapter(
             )
 
             binding.ivIsSaved.isVisible = false
+
             binding.cardOrder.setOnClickListener {
                 onBoxClick(box)
             }
@@ -54,6 +60,7 @@ class ReleaseAdapter(
             binding.btnDelete.setOnClickListener {
                 onDeleteClick(box)
             }
+            binding.root.isVisible = true
         }
 
         private fun formatUserName(userName: String): String {
@@ -65,17 +72,6 @@ class ReleaseAdapter(
                 else -> {
                     userName.take(21).chunked(7).joinToString("\n")
                 }
-            }
-        }
-
-        private fun formatDate(dateString: String): String {
-            return try {
-                val inputFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS", Locale.getDefault())
-                val outputFormat = SimpleDateFormat("dd/MM/yy HH:mm", Locale.getDefault())
-                val date = inputFormat.parse(dateString)
-                date?.let { outputFormat.format(it) } ?: dateString
-            } catch (e: Exception) {
-                dateString
             }
         }
     }
@@ -93,10 +89,16 @@ class ReleaseAdapter(
         holder.bind(boxes[position])
     }
 
-    override fun getItemCount(): Int = boxes.size
+    override fun getItemCount(): Int {
+        return boxes.size
+    }
 
     fun updateData(newBoxes: List<Entities.ReleaseBoxHistoryResponse>) {
+        newBoxes.forEachIndexed { index, box ->
+        }
+
         boxes = newBoxes
         notifyDataSetChanged()
+
     }
 }
