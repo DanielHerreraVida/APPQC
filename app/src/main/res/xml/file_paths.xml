@@ -6,6 +6,7 @@
     <external-files-path
         name="videos"
         path="videos/" />
-    <cache-path name="temp_videos" path="/" />
 
+    <cache-path name="temp_videos" path="/" />
+    <cache-path name="camera_images" path="/" />
 </paths>

@@ -10,6 +10,8 @@ import android.provider.MediaStore
 import android.util.Base64
 import android.view.LayoutInflater
 import android.view.View
+import android.media.ExifInterface
+import android.graphics.Matrix
 import android.view.ViewGroup
 import android.widget.*
 import androidx.activity.result.contract.ActivityResultContracts
@@ -47,10 +49,8 @@ class QCEvidencePhotoFragment : Fragment() {
         val allGranted = permissions.entries.all { it.value }
 
         if (allGranted) {
-            // Todos los permisos concedidos, abrir cámara
             openCamera()
         } else {
-            // Algunos permisos fueron denegados
             Toast.makeText(
                 requireContext(),
                 "Camera and storage permissions are required to take photos",
@@ -71,6 +71,7 @@ class QCEvidencePhotoFragment : Fragment() {
 //            }
 //        }
 //    }
+// Modifica el capturePhoto para usar la corrección de orientación:
 private val capturePhoto = registerForActivityResult(
     ActivityResultContracts.StartActivityForResult()
 ) { result ->
@@ -79,8 +80,12 @@ private val capturePhoto = registerForActivityResult(
         if (!imagePath.isNullOrEmpty()) {
             val file = File(imagePath)
             if (file.exists()) {
-                val bitmap = BitmapFactory.decodeFile(imagePath)
-                uploadImageToServer(bitmap)
+                val bitmap = decodeBitmapWithCorrectOrientation(imagePath)
+                if (bitmap != null) {
+                    uploadImageToServer(bitmap)
+                } else {
+                    Toast.makeText(requireContext(), "Could not process the image", Toast.LENGTH_SHORT).show()
+                }
                 file.delete() // Limpieza
             }
         } else {
@@ -88,6 +93,73 @@ private val capturePhoto = registerForActivityResult(
         }
     }
 }
+    private fun decodeBitmapWithCorrectOrientation(imagePath: String): Bitmap? {
+        return try {
+            val file = File(imagePath)
+
+            val options = BitmapFactory.Options().apply {
+                inJustDecodeBounds = true
+            }
+            BitmapFactory.decodeFile(file.absolutePath, options)
+
+            options.inSampleSize = calculateInSampleSize(options, 1920, 1920)
+            options.inJustDecodeBounds = false
+
+            var bitmap = BitmapFactory.decodeFile(file.absolutePath, options) ?: return null
+
+            val exif = ExifInterface(file.absolutePath)
+            val orientation = exif.getAttributeInt(
+                ExifInterface.TAG_ORIENTATION,
+                ExifInterface.ORIENTATION_NORMAL
+            )
+
+            val matrix = Matrix()
+            when (orientation) {
+                ExifInterface.ORIENTATION_ROTATE_90 -> matrix.postRotate(90f)
+                ExifInterface.ORIENTATION_ROTATE_180 -> matrix.postRotate(180f)
+                ExifInterface.ORIENTATION_ROTATE_270 -> matrix.postRotate(270f)
+                ExifInterface.ORIENTATION_FLIP_HORIZONTAL -> matrix.preScale(-1f, 1f)
+                ExifInterface.ORIENTATION_FLIP_VERTICAL -> matrix.preScale(1f, -1f)
+            }
+
+            bitmap = Bitmap.createBitmap(
+                bitmap,
+                0,
+                0,
+                bitmap.width,
+                bitmap.height,
+                matrix,
+                true
+            )
+
+            bitmap
+
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
+    }
+    private fun calculateInSampleSize(
+        options: BitmapFactory.Options,
+        reqWidth: Int,
+        reqHeight: Int
+    ): Int {
+        val (height: Int, width: Int) = options.run { outHeight to outWidth }
+        var inSampleSize = 1
+
+        if (height > reqHeight || width > reqWidth) {
+            val halfHeight = height / 2
+            val halfWidth = width / 2
+
+            while ((halfHeight / inSampleSize) >= reqHeight &&
+                (halfWidth / inSampleSize) >= reqWidth) {
+                inSampleSize *= 2
+            }
+        }
+
+        return inSampleSize
+    }
+
     private val selectPhotos = registerForActivityResult(
         ActivityResultContracts.GetMultipleContents()
     ) { uris ->

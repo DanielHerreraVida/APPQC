@@ -1,66 +1,115 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
+    android:fitsSystemWindows="true"
     android:layout_height="match_parent"
     android:background="@android:color/black">
 
-    <androidx.camera.view.PreviewView
-        android:id="@+id/previewView"
-        android:layout_width="0dp"
-        android:layout_height="0dp"
-        app:layout_constraintBottom_toTopOf="@+id/controlsLayout"
+    <!-- Mensaje de carga (para cámara nativa) -->
+    <TextView
+        android:id="@+id/tvLoading"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Abriendo cámara..."
+        android:textColor="@android:color/white"
+        android:textSize="18sp"
+        android:visibility="visible"
+        app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
+    <!-- Preview de CameraX -->
+    <androidx.camera.view.PreviewView
+        android:id="@+id/previewView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="gone" />
+
+    <!-- Indicador de Zoom -->
+    <LinearLayout
+        android:id="@+id/zoomIndicator"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:background="#B0000000"
+        android:padding="12dp"
+        android:visibility="gone"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="32dp">
+
+        <TextView
+            android:id="@+id/tvZoomLevel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="1.0x"
+            android:textColor="@android:color/white"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:layout_gravity="center" />
+
+        <ProgressBar
+            android:id="@+id/zoomProgressBar"
+            android:layout_width="200dp"
+            android:layout_height="8dp"
+            android:layout_marginTop="8dp"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:max="100"
+            android:progress="0"
+            android:progressTint="@android:color/white"
+            android:progressBackgroundTint="#50FFFFFF" />
+    </LinearLayout>
+
+    <!-- Controles de CameraX -->
     <LinearLayout
         android:id="@+id/controlsLayout"
-        android:layout_width="0dp"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="#80000000"
-        android:gravity="center"
         android:orientation="horizontal"
-        android:padding="16dp"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent">
+        android:gravity="center"
+        android:padding="20dp"
+        android:background="#B0000000"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="parent">
 
+        <!-- Botón Flash -->
         <ImageButton
-            android:id="@+id/btn_Close"
+            android:id="@+id/btnToggleFlash"
             android:layout_width="56dp"
             android:layout_height="56dp"
             android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="Close"
-            android:src="@drawable/ic_close"
-            android:tint="@android:color/white" />
-
-        <Space
-            android:layout_width="0dp"
-            android:layout_height="1dp"
-            android:layout_weight="1" />
-
-        <ImageButton
-            android:id="@+id/btn_Capture"
-            android:layout_width="72dp"
-            android:layout_height="72dp"
-            android:background="@drawable/capture_button"
-            android:contentDescription="Take Photo" />
-
-        <Space
-            android:layout_width="0dp"
-            android:layout_height="1dp"
-            android:layout_weight="1" />
-
-        <ImageButton
-            android:id="@+id/btn_ToggleFlash"
-            android:layout_width="56dp"
-            android:layout_height="56dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
+            android:src="@drawable/ic_flash_off"
             android:contentDescription="Toggle Flash"
-            android:src="@drawable/ic_flashlight_off"
-            android:tint="@android:color/white" />
+            android:scaleType="centerInside"
+            android:padding="12dp"
+            android:layout_marginEnd="32dp" />
 
+        <!-- Botón Capturar (más grande) -->
+        <ImageButton
+            android:id="@+id/btnCapture"
+            android:layout_width="80dp"
+            android:layout_height="80dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:src="@drawable/ic_camera_capture"
+            android:contentDescription="Capture Photo"
+            android:scaleType="centerInside"
+            android:padding="8dp" />
+
+        <!-- Botón Cerrar -->
+        <ImageButton
+            android:id="@+id/btnClose"
+            android:layout_width="56dp"
+            android:layout_height="56dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:src="@drawable/ic_close"
+            android:contentDescription="Close"
+            android:scaleType="centerInside"
+            android:padding="12dp"
+            android:layout_marginStart="32dp" />
     </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

@@ -429,16 +429,54 @@ private fun handleScanResult(resultCode: Int, scannedCode: String?) {
     private fun handleManualScan(scannedCode: String) {
         val idBox = scannedCode.trim()
 
-        Log.d(TAG, "handleManualScan - idBox: $idBox, isNavigating: $isNavigatingToQCBoxes")
-
         if (idBox.isEmpty()) {
             showError("Invalid code")
             return
         }
 
-        navigateToQCBoxesSafely(idBox)
-        binding.etSearch.setText("")
+        if (isNavigatingToQCBoxes) return
+
+        // 🔥 Buscar la orden SOLO si existe en memoria
+        val order = findOrderByBoxId(idBox)
+        val isSaved = order?.isSaved == "1"
+
+        // Solo seteamos globals si la orden existe
+        if (order != null) {
+            GlobalOrder.clear()
+            GlobalOrder.set(order)
+
+            GlobalReason.clear()
+            GlobalReason.set(order.reason)
+        }
+
+        setLoading(true)
+
+        viewModel.scanBoxToInspect(idBox, isSaved) { scanResult ->
+            setLoading(false)
+
+            when {
+                // 🟢 CASO 1 — Orden guardada y con cajas
+                isSaved && scanResult?.lstSelectedBoxes?.isNotEmpty() == true -> {
+                    openQCInspection(scanResult, order!!)
+                }
+
+                // 🟡 CASO 2 — Orden guardada pero sin cajas
+                isSaved && scanResult?.lstSelectedBoxes?.isEmpty() == true -> {
+                    showMessage("Scan again")
+                }
+
+                // 🔵 CASO 3 — Orden NO guardada
+                else -> {
+                    navigateToQCBoxesSafely(idBox)
+                }
+            }
+
+            binding.etSearch.setText("")
+        }
     }
+
+
+
 
     //    private fun handleManualScan(scannedCode: String) {
 //        if (isNavigatingToQCBoxes) {

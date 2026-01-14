@@ -107,13 +107,13 @@
             android:screenOrientation="portrait"
             android:theme="@style/Theme.QCEQAPP"/>
 
+
         <activity
             android:name=".uis.QCInspection.QCCompositionActivity"
             android:label="QC Inspection"
             android:exported="false"
             android:screenOrientation="portrait"
-            android:theme="@style/Theme.AppCompat.Light.NoActionBar" />
-
+            android:theme="@style/Theme.QCEQAPP.Composition" />
         <activity
             android:name=".uis.QCOrderSent.QCOrderSentActivity"
             android:label="View history"
@@ -144,9 +144,9 @@
             android:theme="@style/Theme.QCEQAPP" />
         <provider
             android:name="androidx.core.content.FileProvider"
-            android:authorities="${applicationId}.provider"
+            android:authorities="${applicationId}.fileprovider"
             android:exported="false"
-            android:grantUriPermissions="true">
+            android:grantUriPermissions="true">-
             <meta-data
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/file_paths" />

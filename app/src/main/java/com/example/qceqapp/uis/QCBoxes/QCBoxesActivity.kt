@@ -91,9 +91,8 @@ class QCBoxesActivity : AppCompatActivity() {
         barcodeTv.text = codeReaded
         progressBar.visibility = View.VISIBLE
     }
-
     private fun setupRecyclerViews() {
-        selectedAdapter = QCBoxAdapter(selectedBoxesList, null)
+        selectedAdapter = QCBoxAdapter(selectedBoxesList) { box -> onBoxClicked(box) }
         rvSelected.layoutManager = LinearLayoutManager(this)
         rvSelected.adapter = selectedAdapter
 
@@ -105,6 +104,19 @@ class QCBoxesActivity : AppCompatActivity() {
         rvAll.layoutManager = LinearLayoutManager(this)
         rvAll.adapter = allAdapter
     }
+//    private fun setupRecyclerViews() {
+//        selectedAdapter = QCBoxAdapter(selectedBoxesList, null)
+//        rvSelected.layoutManager = LinearLayoutManager(this)
+//        rvSelected.adapter = selectedAdapter
+//
+//        relatedAdapter = QCBoxAdapter(selectedBoxesList) { box -> onBoxClicked(box) }
+//        rvRelated.layoutManager = LinearLayoutManager(this)
+//        rvRelated.adapter = relatedAdapter
+//
+//        allAdapter = QCBoxAdapter(selectedBoxesList) { box -> onBoxClicked(box) }
+//        rvAll.layoutManager = LinearLayoutManager(this)
+//        rvAll.adapter = allAdapter
+//    }
     private fun setupViewModel() {
         viewModel = QCBoxesViewModel()
 

@@ -1,0 +1,19 @@
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Icono SENT (base) -->
+    <item>
+        <bitmap
+            android:src="@drawable/ic_inspsent"
+            android:gravity="center" />
+    </item>
+
+    <!-- Icono MODIFIED encima -->
+    <item
+        android:top="10dp"
+        android:right="10dp">
+        <bitmap
+            android:src="@drawable/icissaved"
+            android:gravity="center" />
+    </item>
+
+</layer-list>

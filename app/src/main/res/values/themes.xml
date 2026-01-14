@@ -5,6 +5,7 @@
         <item name="colorPrimary">@color/colorPrimary</item>
         <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
         <item name="colorAccent">@color/colorAccent</item>
+        <item name="android:windowFullscreen">false</item>
 
         <!-- Status bar y navigation bar -->
         <item name="android:statusBarColor">@android:color/transparent</item>
@@ -25,4 +26,10 @@
         <item name="textAppearanceButton">@style/TextAppearance.MaterialComponents.Button</item>
         <item name="textAppearanceOverline">@style/TextAppearance.MaterialComponents.Overline</item>
     </style>
+    <style name="Theme.QCEQAPP.Composition" parent="Theme.QCEQAPP">
+        <!-- Mantiene NoActionBar pero con barra de estado visible -->
+        <item name="android:windowFullscreen">false</item>
+        <item name="android:statusBarColor">@color/colorPrimaryDark</item>
+    </style>
+
 </resources>

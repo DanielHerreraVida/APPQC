@@ -5,6 +5,7 @@
     android:layout_height="wrap_content"
     android:orientation="vertical"
     android:background="#FFFFFF"
+    android:fitsSystemWindows="true"
     android:paddingTop="16dp">
 
     <!-- Header con título -->

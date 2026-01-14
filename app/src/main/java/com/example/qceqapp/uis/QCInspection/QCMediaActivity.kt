@@ -91,8 +91,55 @@ class QCMediaActivity : AppCompatActivity() {
         }
 
         onBackPressedDispatcher.addCallback(this) {
-            onContinue()
+            handleBackPress()
         }
+    }
+
+    private fun handleBackPress() {
+        val photosList = viewModel.photoPaths.value ?: emptyList()
+        val videosList = viewModel.videoPaths.value ?: emptyList()
+        val totalMedia = photosList.size + videosList.size
+
+        if (totalMedia == 0) {
+            finish()
+        } else {
+            showSaveChangesDialog(totalMedia)
+        }
+    }
+
+    private fun showSaveChangesDialog(mediaCount: Int) {
+        val photoCount = viewModel.photoPaths.value?.size ?: 0
+        val videoCount = viewModel.videoPaths.value?.size ?: 0
+
+        val message = buildString {
+            append("You have ")
+            if (photoCount > 0) {
+                append("$photoCount photo(s)")
+            }
+            if (photoCount > 0 && videoCount > 0) {
+                append(" and ")
+            }
+            if (videoCount > 0) {
+                append("$videoCount video(s)")
+            }
+            append(".\n\nDo you want to save your changes before leaving?")
+        }
+
+        AlertDialog.Builder(this)
+            .setTitle("Save Changes?")
+            .setMessage(message)
+            .setIcon(android.R.drawable.ic_dialog_alert)
+            .setPositiveButton("Save") { _, _ ->
+                onContinue()
+            }
+            .setNegativeButton("Discard") { _, _ ->
+                finish()
+            }
+            .setNeutralButton("Cancel") { dialog, _ ->
+                dialog.dismiss()
+            }
+            .setCancelable(true)
+            .show()
     }
 
     private fun openPhotoFragment() {

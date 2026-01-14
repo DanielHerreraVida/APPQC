@@ -20,7 +20,22 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
+    // ⭐ AGREGAR ESTO - Configuración de firma
+    signingConfigs {
+        create("release") {
+            // Opción 1: Usar debug keystore para pruebas (temporal)
+            storeFile = file("${System.getProperty("user.home")}/.android/debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
 
+            // Opción 2: Usar tu propio keystore (comentado por ahora)
+            // storeFile = file("C:\\keystore\\qceqapp-key.jks")
+            // storePassword = "TU_PASSWORD"
+            // keyAlias = "qceqapp"
+            // keyPassword = "TU_KEY_PASSWORD"
+        }
+    }
     buildTypes {
         release {
             isMinifyEnabled = false
@@ -28,6 +43,8 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            signingConfig = signingConfigs.getByName("release") // ⭐ AGREGAR ESTA LÍNEA
+
         }
     }
     compileOptions {

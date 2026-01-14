@@ -37,14 +37,25 @@ class OrdersAdapter(
 //                    boxId
 //                }
 //            }
+//            val boxId = order.boxId
+//            if (boxId.isNullOrEmpty()) {
+//                binding.tvOrderNumber.text = "-"
+//            } else {
+//                val parts = boxId.split(',').map { it.trim() }
+//                val firstBox = parts.firstOrNull() ?: "-"
+//                binding.tvOrderNumber.text = firstBox
+//            }
             val boxId = order.boxId
-            if (boxId.isNullOrEmpty()) {
-                binding.tvOrderNumber.text = "-"
-            } else {
-                val parts = boxId.split(',').map { it.trim() }
-                val firstBox = parts.firstOrNull() ?: "-"
-                binding.tvOrderNumber.text = firstBox
-            }
+            binding.tvOrderNumber.text =
+                if (boxId.isNullOrBlank()) {
+                    "-"
+                } else {
+                    boxId
+                        .split(",")
+                        .map { it.trim() }
+                        .filter { it.isNotEmpty() }
+                        .joinToString(", ")
+                }
 
 
             binding.ivAuthor.setImageResource(R.drawable.ic_flower)

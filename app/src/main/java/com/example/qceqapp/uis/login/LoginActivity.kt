@@ -12,7 +12,8 @@ import com.example.qceqapp.data.network.Constants
 import com.example.qceqapp.databinding.ActivityLoginBinding
 import com.example.qceqapp.uis.main.MainActivity
 import com.example.qceqapp.utils.SessionManager
-
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 class LoginActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityLoginBinding

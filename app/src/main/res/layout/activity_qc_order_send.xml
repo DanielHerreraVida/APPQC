@@ -5,6 +5,7 @@
     android:layout_width="match_parent"
     android:nestedScrollingEnabled="true"
     android:fillViewport="true"
+    android:fitsSystemWindows="true"
     android:layout_height="match_parent">
 
     <ScrollView
