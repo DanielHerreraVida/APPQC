@@ -49,6 +49,7 @@ class LoginActivity : AppCompatActivity() {
             }
         }
         checkForUpdates()
+        Toast.makeText(this, "Version 2.0.7 - Auto Update Test", Toast.LENGTH_LONG).show()
 
     }
     private fun checkForUpdates() {
