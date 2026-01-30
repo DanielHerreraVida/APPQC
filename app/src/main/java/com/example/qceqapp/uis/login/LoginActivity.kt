@@ -7,19 +7,23 @@ import android.view.View
 import android.widget.Toast
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.lifecycleScope
 import com.example.qceqapp.R
 import com.example.qceqapp.data.network.Constants
 import com.example.qceqapp.databinding.ActivityLoginBinding
 import com.example.qceqapp.uis.main.MainActivity
 import com.example.qceqapp.utils.SessionManager
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowInsetsCompat
+import com.example.qceqapp.utils.UpdateManager
+import com.example.qceqapp.data.model.GithubRelease
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import kotlinx.coroutines.launch
 class LoginActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityLoginBinding
     private val viewModel: LoginViewModel by viewModels()
     private var isPasswordVisible = false
     private lateinit var sessionManager: SessionManager
+    private lateinit var updateManager: UpdateManager  // ⭐ AGREGAR ESTA LÍNEA
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -28,6 +32,7 @@ class LoginActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         sessionManager = SessionManager(this)
+        updateManager = UpdateManager(this)  // ⭐ INICIALIZAR AQUÍ
 
         initializeBaseUrl()
 
@@ -43,8 +48,24 @@ class LoginActivity : AppCompatActivity() {
                 viewModel.login(username, password)
             }
         }
-    }
+        checkForUpdates()
 
+    }
+    private fun checkForUpdates() {
+        lifecycleScope.launch {
+            try {
+                val (hasUpdate, newVersion, release) = updateManager.checkForUpdates()
+
+                if (hasUpdate && release != null) {
+                    showUpdateDialog(release)
+                }
+            } catch (e: Exception) {
+                // Silenciosamente falla si no hay internet o GitHub no está disponible
+                // No mostramos error al usuario para no interrumpir el flujo de login
+                e.printStackTrace()
+            }
+        }
+    }
     private fun initializeBaseUrl() {
         val savedUrl = sessionManager.getStoredUrl()
         if (!savedUrl.isNullOrEmpty()) {
@@ -87,7 +108,44 @@ class LoginActivity : AppCompatActivity() {
             binding.etPassword.setSelection(binding.etPassword.text?.length ?: 0)
         }
     }
+    private fun showUpdateDialog(release: GithubRelease) {
+        val apkAsset = release.assets.find { it.name.endsWith(".apk") }
 
+        if (apkAsset == null) {
+            return
+        }
+
+        MaterialAlertDialogBuilder(this)
+            .setTitle("🎉 Nueva actualización disponible")
+            .setMessage(
+                "Versión ${release.tagName} está disponible\n\n" +
+                        "${release.description?.take(200) ?: "Nuevas mejoras y correcciones"}\n\n" +
+                        "Tamaño: ${formatFileSize(apkAsset.size)}"
+            )
+            .setPositiveButton("Actualizar ahora") { _, _ ->
+                updateManager.downloadAndInstallUpdate(
+                    apkAsset.downloadUrl,
+                    release.tagName
+                )
+                Toast.makeText(
+                    this,
+                    "Descargando actualización...",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+            .setNegativeButton("Más tarde", null)
+            .setCancelable(false)
+            .show()
+    }
+    private fun formatFileSize(size: Long): String {
+        val kb = size / 1024.0
+        val mb = kb / 1024.0
+        return if (mb >= 1) {
+            String.format("%.2f MB", mb)
+        } else {
+            String.format("%.2f KB", kb)
+        }
+    }
     private fun observeViewModel() {
         viewModel.isLoading.observe(this) { isLoading ->
             showLoading(isLoading)

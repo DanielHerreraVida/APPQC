@@ -71,6 +71,9 @@ dependencies {
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
     implementation(libs.material)
+    implementation("com.google.android.material:material:1.11.0")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.7.0")
+
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
     // AndroidX básicos
     implementation("androidx.appcompat:appcompat:1.6.1")
