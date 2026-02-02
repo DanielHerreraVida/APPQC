@@ -9,6 +9,7 @@ import android.content.IntentFilter
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
+import android.widget.Toast
 import androidx.core.content.FileProvider
 import com.example.qceqapp.data.model.GithubRelease
 import com.example.qceqapp.data.remote.GithubApiService
@@ -17,7 +18,8 @@ import kotlinx.coroutines.withContext
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import java.io.File
-
+import android.provider.Settings
+import androidx.annotation.RequiresApi
 class UpdateManager(private val context: Context) {
 
     companion object {
@@ -36,10 +38,7 @@ class UpdateManager(private val context: Context) {
 
     private var downloadId: Long = -1
 
-    /**
-     * Verifica si hay una nueva versión disponible
-     * @return Triple(hayActualizacion, versionNueva, release)
-     */
+
     suspend fun checkForUpdates(): Triple<Boolean, String?, GithubRelease?> {
         return withContext(Dispatchers.IO) {
             try {
@@ -64,9 +63,6 @@ class UpdateManager(private val context: Context) {
         }
     }
 
-    /**
-     * Obtiene la versión actual de la app
-     */
     private fun getCurrentAppVersion(): String {
         return try {
             val packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
@@ -76,10 +72,7 @@ class UpdateManager(private val context: Context) {
         }
     }
 
-    /**
-     * Descarga e instala la actualización
-     */
-    @SuppressLint("UnspecifiedRegisterReceiverFlag")  // ⭐ AGREGAR ESTA LÍNEA
+    @SuppressLint("UnspecifiedRegisterReceiverFlag")
     fun downloadAndInstallUpdate(downloadUrl: String, versionName: String) {
         val fileName = "QCEQAPP_$versionName.apk"
 
@@ -90,17 +83,57 @@ class UpdateManager(private val context: Context) {
             setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, fileName)
             setAllowedOverMetered(true)
             setAllowedOverRoaming(true)
+            setMimeType("application/vnd.android.package-archive")
         }
 
         val downloadManager = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
         downloadId = downloadManager.enqueue(request)
 
-        // Registrar BroadcastReceiver para cuando termine la descarga
+        android.util.Log.d("UpdateManager", " Download ID: $downloadId")
+
         val onComplete = object : BroadcastReceiver() {
             override fun onReceive(context: Context, intent: Intent) {
                 val id = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1)
+
+                android.util.Log.d("UpdateManager", " Broadcast recibido - ID: $id")
+
                 if (id == downloadId) {
-                    installApk(context, fileName)
+                    val query = DownloadManager.Query().setFilterById(downloadId)
+                    val cursor = downloadManager.query(query)
+
+                    if (cursor.moveToFirst()) {
+                        val statusIndex = cursor.getColumnIndex(DownloadManager.COLUMN_STATUS)
+                        val status = cursor.getInt(statusIndex)
+
+                        val reasonIndex = cursor.getColumnIndex(DownloadManager.COLUMN_REASON)
+
+                        android.util.Log.d("UpdateManager", " Estado de descarga: $status")
+
+                        when (status) {
+                            DownloadManager.STATUS_SUCCESSFUL -> {
+                                android.util.Log.d("UpdateManager", " Descarga exitosa")
+
+                                android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                                    installApk(context, fileName)
+                                }, 5000)
+                            }
+                            DownloadManager.STATUS_FAILED -> {
+                                val reason = if (reasonIndex >= 0) cursor.getInt(reasonIndex) else -1
+                                android.util.Log.e("UpdateManager", " Descarga falló. Razón: $reason")
+                                android.widget.Toast.makeText(
+                                    context,
+                                    "Error al descargar actualización",
+                                    android.widget.Toast.LENGTH_LONG
+                                ).show()
+                            }
+                            else -> {
+                                android.util.Log.w("UpdateManager", "Estado desconocido: $status")
+                            }
+                        }
+                    }
+
+                    cursor.close()
+
                     try {
                         context.unregisterReceiver(this)
                     } catch (e: Exception) {
@@ -110,7 +143,6 @@ class UpdateManager(private val context: Context) {
             }
         }
 
-        // Registrar el receiver con compatibilidad para diferentes versiones de Android
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             context.registerReceiver(
                 onComplete,
@@ -123,41 +155,95 @@ class UpdateManager(private val context: Context) {
                 IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE)
             )
         }
+
+        android.widget.Toast.makeText(
+            context,
+            "Iniciando descarga...",
+            android.widget.Toast.LENGTH_SHORT
+        ).show()
     }
 
-    /**
-     * Instala el APK descargado
-     */
     private fun installApk(context: Context, fileName: String) {
-        val file = File(
-            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
-            fileName
-        )
+        try {
+            val downloadManager = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+            val uri = downloadManager.getUriForDownloadedFile(downloadId)
 
-        if (!file.exists()) return
-
-        val intent = Intent(Intent.ACTION_VIEW).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION
-
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                val apkUri = FileProvider.getUriForFile(
-                    context,
-                    "${context.packageName}.fileprovider",
-                    file
-                )
-                setDataAndType(apkUri, "application/vnd.android.package-archive")
-            } else {
-                setDataAndType(Uri.fromFile(file), "application/vnd.android.package-archive")
+            if (uri == null) {
+                android.util.Log.e("UpdateManager", " No se pudo obtener URI del archivo")
+                Toast.makeText(context, "Error: No se encontró el archivo descargado", Toast.LENGTH_LONG).show()
+                return
             }
-        }
 
-        context.startActivity(intent)
+            android.util.Log.d("UpdateManager", " URI del archivo: $uri")
+
+            android.util.Log.d("UpdateManager", " Copiando APK a directorio interno...")
+            val internalFile = File(context.cacheDir, fileName)
+
+            try {
+                context.contentResolver.openInputStream(uri)?.use { input ->
+                    internalFile.outputStream().use { output ->
+                        input.copyTo(output)
+                    }
+                }
+
+                android.util.Log.d("UpdateManager", "APK copiado exitosamente")
+                android.util.Log.d("UpdateManager", " Nueva ubicación: ${internalFile.absolutePath}")
+                android.util.Log.d("UpdateManager", " Tamaño copiado: ${internalFile.length()} bytes")
+            } catch (e: Exception) {
+                android.util.Log.e("UpdateManager", "Error al copiar archivo", e)
+                Toast.makeText(context, "Error al procesar APK: ${e.message}", Toast.LENGTH_LONG).show()
+                return
+            }
+
+            installApkFromInternalStorage(context, internalFile)
+
+        } catch (e: Exception) {
+            android.util.Log.e("UpdateManager", "Error al instalar APK", e)
+            Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_LONG).show()
+        }
     }
 
-    /**
-     * Compara dos versiones (formato: v1.0.0 o 1.0.0)
-     * @return 1 si version1 > version2, -1 si version1 < version2, 0 si son iguales
-     */
+    private fun installApkFromInternalStorage(context: Context, file: File) {
+        try {
+            android.util.Log.d("UpdateManager", "Instalando desde almacenamiento interno")
+
+            val uri = FileProvider.getUriForFile(
+                context,
+                "${context.packageName}.fileprovider",
+                file
+            )
+
+            android.util.Log.d("UpdateManager", "URI: $uri")
+
+            val intent = Intent(Intent.ACTION_VIEW).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION
+                setDataAndType(uri, "application/vnd.android.package-archive")
+            }
+
+            // Dar permisos explícitos
+            context.grantUriPermission(
+                "com.android.packageinstaller",
+                uri,
+                Intent.FLAG_GRANT_READ_URI_PERMISSION
+            )
+
+            context.grantUriPermission(
+                "com.google.android.packageinstaller",
+                uri,
+                Intent.FLAG_GRANT_READ_URI_PERMISSION
+            )
+
+            android.util.Log.d("UpdateManager", " Abriendo instalador...")
+            context.startActivity(intent)
+
+            Toast.makeText(context, "Instalando actualización...", Toast.LENGTH_SHORT).show()
+
+        } catch (e: Exception) {
+            android.util.Log.e("UpdateManager", " Error al instalar", e)
+            Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_LONG).show()
+        }
+    }
+
     private fun compareVersions(version1: String, version2: String): Int {
         val v1Parts = version1.replace("v", "").split(".")
         val v2Parts = version2.replace("v", "").split(".")
@@ -175,9 +261,7 @@ class UpdateManager(private val context: Context) {
         return 0
     }
 
-    /**
-     * Parsea la versión eliminando la 'v' si existe
-     */
+
     private fun parseVersion(version: String): String {
         return version.replace("v", "")
     }

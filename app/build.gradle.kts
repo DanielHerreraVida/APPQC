@@ -1,3 +1,5 @@
+import java.util.Properties
+import java.io.FileInputStream
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -6,7 +8,11 @@ plugins {
     id("org.jetbrains.kotlin.kapt")
 
 }
-
+val keystorePropertiesFile = rootProject.file("keystore.properties")
+val keystoreProperties = Properties()
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(FileInputStream(keystorePropertiesFile))
+}
 android {
     namespace = "com.example.qceqapp"
     compileSdk = 36
@@ -15,25 +21,19 @@ android {
         applicationId = "com.example.qceqapp"
         minSdk = 24
         targetSdk = 36
-        versionCode = 207
-        versionName = "2.0.7"
+        versionCode = 214
+        versionName = "2.1.4"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
-    // ⭐ AGREGAR ESTO - Configuración de firma
     signingConfigs {
         create("release") {
-            // Opción 1: Usar debug keystore para pruebas (temporal)
-            storeFile = file("${System.getProperty("user.home")}/.android/debug.keystore")
-            storePassword = "android"
-            keyAlias = "androiddebugkey"
-            keyPassword = "android"
-
-            // Opción 2: Usar tu propio keystore (comentado por ahora)
-            // storeFile = file("C:\\keystore\\qceqapp-key.jks")
-            // storePassword = "TU_PASSWORD"
-            // keyAlias = "qceqapp"
-            // keyPassword = "TU_KEY_PASSWORD"
+            if (keystorePropertiesFile.exists()) {
+                storeFile = file(keystoreProperties["storeFile"] as String)
+                storePassword = keystoreProperties["storePassword"] as String
+                keyAlias = keystoreProperties["keyAlias"] as String
+                keyPassword = keystoreProperties["keyPassword"] as String
+            }
         }
     }
     buildTypes {
@@ -43,7 +43,7 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            signingConfig = signingConfigs.getByName("release") // ⭐ AGREGAR ESTA LÍNEA
+            signingConfig = signingConfigs.getByName("release")
 
         }
     }

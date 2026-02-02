@@ -9,4 +9,7 @@
 
     <cache-path name="temp_videos" path="/" />
     <cache-path name="camera_images" path="/" />
+
+    <external-path name="downloads" path="Download/" />
+    <cache-path name="cache" path="." />
 </paths>
