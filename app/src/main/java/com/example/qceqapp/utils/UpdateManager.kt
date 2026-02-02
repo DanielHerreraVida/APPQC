@@ -38,7 +38,6 @@ class UpdateManager(private val context: Context) {
 
     private var downloadId: Long = -1
 
-
     suspend fun checkForUpdates(): Triple<Boolean, String?, GithubRelease?> {
         return withContext(Dispatchers.IO) {
             try {
@@ -63,6 +62,9 @@ class UpdateManager(private val context: Context) {
         }
     }
 
+    /**
+     * Obtiene la versión actual de la app
+     */
     private fun getCurrentAppVersion(): String {
         return try {
             val packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
@@ -72,6 +74,9 @@ class UpdateManager(private val context: Context) {
         }
     }
 
+    /**
+     * Descarga e instala la actualización
+     */
     @SuppressLint("UnspecifiedRegisterReceiverFlag")
     fun downloadAndInstallUpdate(downloadUrl: String, versionName: String) {
         val fileName = "QCEQAPP_$versionName.apk"
@@ -115,7 +120,7 @@ class UpdateManager(private val context: Context) {
 
                                 android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
                                     installApk(context, fileName)
-                                }, 5000)
+                                }, 5000) // 2 segundos de delay
                             }
                             DownloadManager.STATUS_FAILED -> {
                                 val reason = if (reasonIndex >= 0) cursor.getInt(reasonIndex) else -1
@@ -127,7 +132,7 @@ class UpdateManager(private val context: Context) {
                                 ).show()
                             }
                             else -> {
-                                android.util.Log.w("UpdateManager", "Estado desconocido: $status")
+                                android.util.Log.w("UpdateManager", "️ Estado desconocido: $status")
                             }
                         }
                     }
@@ -163,6 +168,9 @@ class UpdateManager(private val context: Context) {
         ).show()
     }
 
+    /**
+     * Instala el APK descargado
+     */
     private fun installApk(context: Context, fileName: String) {
         try {
             val downloadManager = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
@@ -186,11 +194,11 @@ class UpdateManager(private val context: Context) {
                     }
                 }
 
-                android.util.Log.d("UpdateManager", "APK copiado exitosamente")
+                android.util.Log.d("UpdateManager", " APK copiado exitosamente")
                 android.util.Log.d("UpdateManager", " Nueva ubicación: ${internalFile.absolutePath}")
                 android.util.Log.d("UpdateManager", " Tamaño copiado: ${internalFile.length()} bytes")
             } catch (e: Exception) {
-                android.util.Log.e("UpdateManager", "Error al copiar archivo", e)
+                android.util.Log.e("UpdateManager", " Error al copiar archivo", e)
                 Toast.makeText(context, "Error al procesar APK: ${e.message}", Toast.LENGTH_LONG).show()
                 return
             }
@@ -198,14 +206,17 @@ class UpdateManager(private val context: Context) {
             installApkFromInternalStorage(context, internalFile)
 
         } catch (e: Exception) {
-            android.util.Log.e("UpdateManager", "Error al instalar APK", e)
+            android.util.Log.e("UpdateManager", " Error al instalar APK", e)
             Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_LONG).show()
         }
     }
 
+    /**
+     * Instala el APK desde almacenamiento interno
+     */
     private fun installApkFromInternalStorage(context: Context, file: File) {
         try {
-            android.util.Log.d("UpdateManager", "Instalando desde almacenamiento interno")
+            android.util.Log.d("UpdateManager", " Instalando desde almacenamiento interno")
 
             val uri = FileProvider.getUriForFile(
                 context,
@@ -213,7 +224,7 @@ class UpdateManager(private val context: Context) {
                 file
             )
 
-            android.util.Log.d("UpdateManager", "URI: $uri")
+            android.util.Log.d("UpdateManager", " URI: $uri")
 
             val intent = Intent(Intent.ACTION_VIEW).apply {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION
@@ -244,6 +255,7 @@ class UpdateManager(private val context: Context) {
         }
     }
 
+
     private fun compareVersions(version1: String, version2: String): Int {
         val v1Parts = version1.replace("v", "").split(".")
         val v2Parts = version2.replace("v", "").split(".")
@@ -260,7 +272,6 @@ class UpdateManager(private val context: Context) {
 
         return 0
     }
-
 
     private fun parseVersion(version: String): String {
         return version.replace("v", "")

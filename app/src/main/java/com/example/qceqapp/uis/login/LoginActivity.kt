@@ -116,7 +116,7 @@ class LoginActivity : AppCompatActivity() {
         }
 
         MaterialAlertDialogBuilder(this)
-            .setTitle("🎉 Nueva actualización disponible")
+            .setTitle(" Nueva actualización disponible")
             .setMessage(
                 "Versión ${release.tagName} está disponible\n\n" +
                         "${release.description?.take(200) ?: "Nuevas mejoras y correcciones"}\n\n" +

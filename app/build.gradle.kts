@@ -21,8 +21,8 @@ android {
         applicationId = "com.example.qceqapp"
         minSdk = 24
         targetSdk = 36
-        versionCode = 214
-        versionName = "2.1.4"
+        versionCode = 2142
+        versionName = "2.1.4.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
