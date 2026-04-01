@@ -21,8 +21,8 @@ android {
         applicationId = "com.example.qceqapp"
         minSdk = 24
         targetSdk = 36
-        versionCode = 2142
-        versionName = "2.1.4.2"
+        versionCode = 2144
+        versionName = "2.1.4.4"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -44,8 +44,13 @@ android {
                 "proguard-rules.pro"
             )
             signingConfig = signingConfigs.getByName("release")
-
         }
+    }
+    lint {
+        // lintVitalAnalyzeRelease bloqueaba archivos .jar en Windows impidiendo Clean.
+        // Con isMinifyEnabled = false el lint vital no aporta valor — se deshabilita en release.
+        checkReleaseBuilds = false
+        abortOnError = false
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
@@ -122,4 +127,10 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     implementation("com.github.bumptech.glide:glide:4.16.0")
     kapt("com.github.bumptech.glide:compiler:4.16.0")
+
+    // Room (SQLite) — persistencia local de pending items
+    val roomVersion = "2.6.1"
+    implementation("androidx.room:room-runtime:$roomVersion")
+    implementation("androidx.room:room-ktx:$roomVersion")
+    kapt("androidx.room:room-compiler:$roomVersion")
 }

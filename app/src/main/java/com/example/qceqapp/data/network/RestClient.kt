@@ -7,18 +7,24 @@ import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Response
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+import java.io.IOException
 import java.security.cert.X509Certificate
 import java.util.concurrent.TimeUnit
 import javax.net.ssl.SSLContext
 import javax.net.ssl.TrustManager
 import javax.net.ssl.X509TrustManager
 import com.example.qceqapp.data.model.session.UserSession
+import com.example.qceqapp.utils.SessionEventBus
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 
 class RestClient {
+
+    companion object {
+        private const val TAG = "RestClient"
+    }
 
     private val apiService: ApiService
 
@@ -60,6 +66,9 @@ class RestClient {
                 }
             }
             Result.success(Unit)
+        } catch (e: IOException) {
+            Log.e(TAG, "NETWORK ERROR -> ${e.message}")
+            Result.failure(e)
         } catch (e: Exception) {
             Result.failure(Exception("Token validation error: ${e.message}"))
         }
@@ -67,12 +76,23 @@ class RestClient {
 
     private fun getAuthorizationHeader(): String = "Bearer ${Constants.token}"
 
-    private fun handleHttpError(code: Int, rawError: String?): Exception {
+    /**
+     * @param emitOn401 Si es true, emite un evento global de sesión expirada cuando el código
+     *                  es 401. Debe ser false para llamadas de sistema (getToken, healthCheck)
+     *                  que no representan la sesión del usuario.
+     */
+    private fun handleHttpError(code: Int, rawError: String?, emitOn401: Boolean = true): Exception {
+        Log.e(TAG, "HTTP ERROR -> code=$code")
         val cleanMessage = rawError
-            ?.replace(Regex("<[^>]*>"), "") // Remove HTML tags
-            ?.replace(Regex("\\s+"), " ")   // Clean extra spaces
+            ?.replace(Regex("<[^>]*>"), "")
+            ?.replace(Regex("\\s+"), " ")
             ?.trim()
             ?.takeIf { it.isNotBlank() }
+
+        if (code == 401 && emitOn401) {
+            Log.e(TAG, "AUTH ERROR -> 401 detected, triggering logout")
+            SessionEventBus.emitSessionExpired()
+        }
 
         return when (code) {
             400 -> Exception("Bad request. Please verify the data sent.")
@@ -158,12 +178,14 @@ class RestClient {
             if (response.isSuccessful) {
                 val raw = response.body()?.string() ?: ""
                 Result.success(raw)
-            }
-            else
-            {
+            } else {
                 val errorBody = response.errorBody()?.string()
-                Result.failure(handleHttpError(response.code(), errorBody))
+                // emitOn401 = false: healthCheck no representa sesión de usuario
+                Result.failure(handleHttpError(response.code(), errorBody, emitOn401 = false))
             }
+        } catch (e: IOException) {
+            Log.e(TAG, "NETWORK ERROR -> ${e.message}")
+            Result.failure(e)
         } catch (e: Exception) {
             Result.failure(Exception("Health check error: ${e.message}"))
         }
@@ -187,8 +209,12 @@ class RestClient {
                 }
             } else {
                 val errorBody = response.errorBody()?.string()
-                Result.failure(handleHttpError(response.code(), errorBody))
+                // emitOn401 = false: este endpoint usa credenciales de sistema, no de usuario
+                Result.failure(handleHttpError(response.code(), errorBody, emitOn401 = false))
             }
+        } catch (e: IOException) {
+            Log.e(TAG, "NETWORK ERROR -> ${e.message}")
+            Result.failure(e)
         } catch (e: Exception) {
             Result.failure(Exception("Token request failed: ${e.message}"))
         }
@@ -218,6 +244,9 @@ class RestClient {
                 val errorBody = response.errorBody()?.string()
                 Result.failure(handleHttpError(response.code(), errorBody))
             }
+        } catch (e: IOException) {
+            Log.e(TAG, "NETWORK ERROR -> ${e.message}")
+            Result.failure(e)
         } catch (e: Exception) {
             Result.failure(Exception("Login failed: ${e.message}"))
         }
@@ -228,6 +257,9 @@ class RestClient {
             ensureToken().onFailure { return Result.failure(it) }
             val response = apiService.getQCCustomers(getAuthorizationHeader(), type)
             handleListResponse(response, "No customers found")
+        } catch (e: IOException) {
+            Log.e(TAG, "NETWORK ERROR -> ${e.message}")
+            Result.failure(e)
         } catch (e: Exception) {
             Result.failure(Exception("Failed to fetch customers: ${e.message}"))
         }
@@ -238,6 +270,9 @@ class RestClient {
             ensureToken().onFailure { return Result.failure(it) }
             val response = apiService.getQCGrowers(getAuthorizationHeader(), type)
             handleListResponse(response, "No growers found")
+        } catch (e: IOException) {
+            Log.e(TAG, "NETWORK ERROR -> ${e.message}")
+            Result.failure(e)
         } catch (e: Exception) {
             Result.failure(Exception("Failed to fetch growers: ${e.message}"))
         }
@@ -248,6 +283,9 @@ class RestClient {
             ensureToken().onFailure { return Result.failure(it) }
             val response = apiService.getQCOrders(getAuthorizationHeader())
             handleListResponse(response, "No orders found for inspection")
+        } catch (e: IOException) {
+            Log.e(TAG, "NETWORK ERROR -> ${e.message}")
+            Result.failure(e)
         } catch (e: Exception) {
             Result.failure(Exception("Failed to fetch QC orders: ${e.message}"))
         }
@@ -273,6 +311,9 @@ class RestClient {
 
             val response = apiService.rejectBox(getAuthorizationHeader(), request)
             handleResponse(response, "Failed to reject box")
+        } catch (e: IOException) {
+            Log.e(TAG, "NETWORK ERROR -> ${e.message}")
+            Result.failure(e)
         } catch (e: Exception) {
             Result.failure(Exception("Failed to reject box: ${e.message}"))
         }
@@ -283,6 +324,9 @@ class RestClient {
             ensureToken().onFailure { return Result.failure(it) }
             val response = apiService.scanToInspect(getAuthorizationHeader(), boxId)
             handleResponse(response, "Box not found or invalid scan")
+        } catch (e: IOException) {
+            Log.e(TAG, "NETWORK ERROR -> ${e.message}")
+            Result.failure(e)
         } catch (e: Exception) {
             Result.failure(Exception("Failed to scan box: ${e.message}"))
         }
@@ -293,6 +337,9 @@ class RestClient {
             ensureToken().onFailure { return Result.failure(it) }
             val response = apiService.getOrderByBox(getAuthorizationHeader(), boxId)
             handleResponse(response, "Order not found for this box")
+        } catch (e: IOException) {
+            Log.e(TAG, "NETWORK ERROR -> ${e.message}")
+            Result.failure(e)
         } catch (e: Exception) {
             Result.failure(Exception("Failed to fetch order by box: ${e.message}"))
         }
@@ -303,6 +350,9 @@ class RestClient {
             ensureToken().onFailure { return Result.failure(it) }
             val response = apiService.getQCHistory(getAuthorizationHeader())
             handleListResponse(response, "No history records found")
+        } catch (e: IOException) {
+            Log.e(TAG, "NETWORK ERROR -> ${e.message}")
+            Result.failure(e)
         } catch (e: Exception) {
             Result.failure(Exception("Failed to fetch QC history: ${e.message}"))
         }
@@ -322,6 +372,9 @@ class RestClient {
                     Result.failure(handleHttpError(response.code(), errorBody))
                 }
             }
+        } catch (e: IOException) {
+            Log.e(TAG, "NETWORK ERROR -> ${e.message}")
+            Result.failure(e)
         } catch (e: Exception) {
             Result.failure(Exception("Failed to set box scan: ${e.message}"))
         }
@@ -344,13 +397,18 @@ class RestClient {
                 response.isSuccessful && rawBody.isNullOrEmpty() -> {
                     Result.failure(Exception("Server returned empty response"))
                 }
-                !response.isSuccessful && !errorBody.isNullOrEmpty() && errorBody.startsWith("{") -> {
+                !response.isSuccessful -> {
+                    // Always route non-successful responses through handleHttpError
+                    // so 401 always triggers logout regardless of error body format
                     Result.failure(handleHttpError(code, errorBody))
                 }
                 else -> {
                     Result.failure(Exception("Unexpected response from server (${code})"))
                 }
             }
+        } catch (e: IOException) {
+            Log.e(TAG, "NETWORK ERROR -> ${e.message}")
+            Result.failure(e)
         } catch (e: Exception) {
             Result.failure(Exception("Failed to check order by box: ${e.message}"))
         }
@@ -361,6 +419,9 @@ class RestClient {
             ensureToken().onFailure { return Result.failure(it) }
             val response = apiService.getQCOrderByBox(getAuthorizationHeader(), idBox)
             handleResponse(response, "No order found for this box")
+        } catch (e: IOException) {
+            Log.e(TAG, "NETWORK ERROR -> ${e.message}")
+            Result.failure(e)
         } catch (e: Exception) {
             Result.failure(Exception("Failed to fetch QC order by box: ${e.message}"))
         }
@@ -383,6 +444,9 @@ class RestClient {
                 val errorBody = response.errorBody()?.string()
                 Result.failure(handleHttpError(response.code(), errorBody))
             }
+        } catch (e: IOException) {
+            Log.e(TAG, "NETWORK ERROR -> ${e.message}")
+            Result.failure(e)
         } catch (e: Exception) {
             Result.failure(Exception("Failed to fetch inspect ID: ${e.message}"))
         }
@@ -404,6 +468,9 @@ class RestClient {
 
             val response = apiService.rejectScannedBox(getAuthorizationHeader(), request)
             handleResponse(response, "Failed to reject scanned box")
+        } catch (e: IOException) {
+            Log.e(TAG, "NETWORK ERROR -> ${e.message}")
+            Result.failure(e)
         } catch (e: Exception) {
             Result.failure(Exception("Failed to reject scanned box: ${e.message}"))
         }
@@ -421,6 +488,9 @@ class RestClient {
                 val errorBody = response.errorBody()?.string()
                 Result.failure(handleHttpError(response.code(), errorBody))
             }
+        } catch (e: IOException) {
+            Log.e(TAG, "NETWORK ERROR -> ${e.message}")
+            Result.failure(e)
         } catch (e: Exception) {
             Result.failure(Exception("Failed to fetch box composition: ${e.message}"))
         }
@@ -431,6 +501,9 @@ class RestClient {
             ensureToken().onFailure { return Result.failure(it) }
             val response = apiService.getBoxInfo(getAuthorizationHeader(), idBox)
             handleResponse(response, "Box information not found")
+        } catch (e: IOException) {
+            Log.e(TAG, "NETWORK ERROR -> ${e.message}")
+            Result.failure(e)
         } catch (e: Exception) {
             Result.failure(Exception("Failed to fetch box info: ${e.message}"))
         }
@@ -448,6 +521,9 @@ class RestClient {
                 val errorBody = response.errorBody()?.string()
                 Result.failure(handleHttpError(response.code(), errorBody))
             }
+        } catch (e: IOException) {
+            Log.e(TAG, "NETWORK ERROR -> ${e.message}")
+            Result.failure(e)
         } catch (e: Exception) {
             Result.failure(Exception("Failed to fetch QC issues: ${e.message}"))
         }
@@ -465,6 +541,9 @@ class RestClient {
                 val errorBody = response.errorBody()?.string()
                 Result.failure(handleHttpError(response.code(), errorBody))
             }
+        } catch (e: IOException) {
+            Log.e(TAG, "NETWORK ERROR -> ${e.message}")
+            Result.failure(e)
         } catch (e: Exception) {
             Result.failure(Exception("Failed to fetch QC actions: ${e.message}"))
         }
@@ -475,6 +554,9 @@ class RestClient {
             ensureToken().onFailure { return Result.failure(it) }
             val response = apiService.getSavedBox(getAuthorizationHeader(), idBox)
             handleResponse(response, "Saved box not found")
+        } catch (e: IOException) {
+            Log.e(TAG, "NETWORK ERROR -> ${e.message}")
+            Result.failure(e)
         } catch (e: Exception) {
             Result.failure(Exception("Failed to fetch saved box: ${e.message}"))
         }
@@ -518,8 +600,10 @@ class RestClient {
 
             val response = apiService.saveQCBox(getAuthorizationHeader(), request)
             handleResponse(response, "Failed to save QC box")
-        }
-        catch (e: Exception) {
+        } catch (e: IOException) {
+            Log.e(TAG, "NETWORK ERROR -> ${e.message}")
+            Result.failure(e)
+        } catch (e: Exception) {
             Result.failure(Exception("Failed to save QC box: ${e.message}"))
         }
     }
@@ -560,6 +644,9 @@ class RestClient {
 
             val response = apiService.saveQCHistorySent(getAuthorizationHeader(), request)
             handleResponse(response, "Failed to save history")
+        } catch (e: IOException) {
+            Log.e(TAG, "NETWORK ERROR -> ${e.message}")
+            Result.failure(e)
         } catch (e: Exception) {
             Result.failure(Exception("Failed to save QC history: ${e.message}"))
         }
@@ -601,6 +688,9 @@ class RestClient {
 
             val response = apiService.sendQCHistorySent(getAuthorizationHeader(), request)
             handleResponse(response, "Failed to send history")
+        } catch (e: IOException) {
+            Log.e(TAG, "NETWORK ERROR -> ${e.message}")
+            Result.failure(e)
         } catch (e: Exception) {
             Result.failure(Exception("Failed to send QC history: ${e.message}"))
         }
@@ -624,6 +714,9 @@ class RestClient {
 
             val response = apiService.updateCompositionsIssues(getAuthorizationHeader(), request)
             handleResponse(response, "Failed to update compositions")
+        } catch (e: IOException) {
+            Log.e(TAG, "NETWORK ERROR -> ${e.message}")
+            Result.failure(e)
         } catch (e: Exception) {
             Result.failure(Exception("Failed to update compositions: ${e.message}"))
         }
@@ -665,10 +758,14 @@ class RestClient {
 
             val response = apiService.sendBox(getAuthorizationHeader(), request)
             handleResponse(response, "Failed to send box")
+        } catch (e: IOException) {
+            Log.e(TAG, "NETWORK ERROR -> ${e.message}")
+            Result.failure(e)
         } catch (e: Exception) {
             Result.failure(Exception("Failed to send box: ${e.message}"))
         }
     }
+
     suspend fun sendBoxToSent(
         idBox: String,
         ordNum: Int,
@@ -705,10 +802,14 @@ class RestClient {
 
             val response = apiService.sendBoxToServer(getAuthorizationHeader(), request)
             handleResponse(response, "Failed to send box")
+        } catch (e: IOException) {
+            Log.e(TAG, "NETWORK ERROR -> ${e.message}")
+            Result.failure(e)
         } catch (e: Exception) {
             Result.failure(Exception("Failed to send box: ${e.message}"))
         }
     }
+
     suspend fun sendGroupInspection(inspections: String): Result<String> {
         return try {
             ensureToken().onFailure { return Result.failure(it) }
@@ -727,10 +828,14 @@ class RestClient {
                 val errorBody = response.errorBody()?.string()
                 Result.failure(handleHttpError(response.code(), errorBody))
             }
+        } catch (e: IOException) {
+            Log.e(TAG, "NETWORK ERROR -> ${e.message}")
+            Result.failure(e)
         } catch (e: Exception) {
             Result.failure(Exception("Failed to send group inspection: ${e.message}"))
         }
     }
+
     suspend fun getFilesByBoxAndOrder(
         guid: String,
         orderNum: String,
@@ -750,13 +855,17 @@ class RestClient {
                 val bytes = response.body()!!.bytes()
                 Result.success(bytes)
             } else {
-                Result.failure(Exception("Image not found"))
+                val errorBody = response.errorBody()?.string()
+                Result.failure(handleHttpError(response.code(), errorBody))
             }
-
+        } catch (e: IOException) {
+            Log.e(TAG, "NETWORK ERROR -> ${e.message}")
+            Result.failure(e)
         } catch (e: Exception) {
             Result.failure(Exception("Failed to fetch image: ${e.message}"))
         }
     }
+
     suspend fun uploadPhoto(orderNum: String, boxIdToInspect: String, imageBytes: ByteArray): Result<String> {
         return try {
             ensureToken().onFailure { return Result.failure(it) }
@@ -780,12 +889,17 @@ class RestClient {
                 val guidFile = jsonObject.getString("guidFile")
                 Result.success(guidFile)
             } else {
-                Result.failure(Exception("Upload failed: ${response.code()}"))
+                val errorBody = response.errorBody()?.string()
+                Result.failure(handleHttpError(response.code(), errorBody))
             }
+        } catch (e: IOException) {
+            Log.e(TAG, "NETWORK ERROR -> ${e.message}")
+            Result.failure(e)
         } catch (e: Exception) {
             Result.failure(Exception("Error uploading photo: ${e.message}"))
         }
     }
+
     suspend fun uploadVideo(orderNum: String, boxIdToInspect: String, videoBytes: ByteArray): Result<String> {
         return try {
             ensureToken().onFailure { return Result.failure(it) }
@@ -809,12 +923,17 @@ class RestClient {
                 val guidFile = jsonObject.getString("guidFile")
                 Result.success(guidFile)
             } else {
-                Result.failure(Exception("Upload failed: ${response.code()}"))
+                val errorBody = response.errorBody()?.string()
+                Result.failure(handleHttpError(response.code(), errorBody))
             }
+        } catch (e: IOException) {
+            Log.e(TAG, "NETWORK ERROR -> ${e.message}")
+            Result.failure(e)
         } catch (e: Exception) {
             Result.failure(Exception("Error uploading video: ${e.message}"))
         }
     }
+
     suspend fun updateCompositionIssues(
         idBox: String,
         floGrade: String,
@@ -841,12 +960,17 @@ class RestClient {
             if (response.isSuccessful && response.body() != null) {
                 Result.success(response.body()!!)
             } else {
-                Result.failure(Exception("Update failed: ${response.code()} - ${response.message()}"))
+                val errorBody = response.errorBody()?.string()
+                Result.failure(handleHttpError(response.code(), errorBody))
             }
+        } catch (e: IOException) {
+            Log.e(TAG, "NETWORK ERROR -> ${e.message}")
+            Result.failure(e)
         } catch (e: Exception) {
             Result.failure(Exception("Error updating composition issues: ${e.message}"))
         }
     }
+
     suspend fun releaseBox(idBox: String, qcUser: String): Result<Entities.ReleaseBoxResponse> {
         return try {
             ensureToken().onFailure { return Result.failure(it) }
@@ -860,13 +984,17 @@ class RestClient {
             if (response.isSuccessful && response.body() != null) {
                 Result.success(response.body()!!)
             } else {
-                Result.failure(Exception("Release failed: ${response.code()}"))
+                val errorBody = response.errorBody()?.string()
+                Result.failure(handleHttpError(response.code(), errorBody))
             }
-
+        } catch (e: IOException) {
+            Log.e(TAG, "NETWORK ERROR -> ${e.message}")
+            Result.failure(e)
         } catch (e: Exception) {
             Result.failure(Exception("Error releasing box: ${e.message}"))
         }
     }
+
     suspend fun getReleasedBoxes(): Result<List<Entities.ReleaseBoxHistoryResponse>> {
         return try {
             ensureToken().onFailure { return Result.failure(it) }
@@ -876,13 +1004,17 @@ class RestClient {
             if (response.isSuccessful && response.body() != null) {
                 Result.success(response.body()!!)
             } else {
-                Result.failure(Exception("Get failed: ${response.code()}"))
+                val errorBody = response.errorBody()?.string()
+                Result.failure(handleHttpError(response.code(), errorBody))
             }
-
+        } catch (e: IOException) {
+            Log.e(TAG, "NETWORK ERROR -> ${e.message}")
+            Result.failure(e)
         } catch (e: Exception) {
             Result.failure(Exception("Error getting release boxes: ${e.message}"))
         }
     }
+
     suspend fun releaseBoxesBatch(boxIds: List<Int>, user: String): Result<Entities.SimpleReleaseResponse> {
         return try {
             ensureToken().onFailure { return Result.failure(it) }
@@ -901,13 +1033,16 @@ class RestClient {
                 Result.success(response.body()!!)
             } else {
                 val errorBody = response.errorBody()?.string()
-                Result.failure(Exception("Release batch failed: ${response.code()} - $errorBody"))
+                Result.failure(handleHttpError(response.code(), errorBody))
             }
-
+        } catch (e: IOException) {
+            Log.e(TAG, "NETWORK ERROR -> ${e.message}")
+            Result.failure(e)
         } catch (e: Exception) {
             Result.failure(Exception("Error releasing boxes batch: ${e.message}"))
         }
     }
+
     suspend fun deleteReleasedBox(boxNumber: Int, username: String): Result<Entities.ReleaseBoxResponse> {
         return try {
             ensureToken().onFailure { return Result.failure(it) }
@@ -922,9 +1057,11 @@ class RestClient {
                 Result.success(response.body()!!)
             } else {
                 val errorBody = response.errorBody()?.string()
-                Result.failure(Exception("Delete failed: ${response.code()} - $errorBody"))
+                Result.failure(handleHttpError(response.code(), errorBody))
             }
-
+        } catch (e: IOException) {
+            Log.e(TAG, "NETWORK ERROR -> ${e.message}")
+            Result.failure(e)
         } catch (e: Exception) {
             Result.failure(Exception("Error deleting released box: ${e.message}"))
         }

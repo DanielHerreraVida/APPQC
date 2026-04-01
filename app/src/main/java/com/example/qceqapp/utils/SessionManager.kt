@@ -1,24 +1,16 @@
 package com.example.qceqapp.utils
 
 import android.content.Context
+import android.content.SharedPreferences
+import android.util.Log
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 
 class SessionManager(context: Context) {
 
-    private val masterKey = MasterKey.Builder(context)
-        .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
-        .build()
-
-    private val sharedPreferences = EncryptedSharedPreferences.create(
-        context,
-        "secure_prefs",
-        masterKey,
-        EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-        EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-    )
-
     companion object {
+        private const val PREFS_NAME = "secure_prefs"
+        private const val TAG = "SessionManager"
         private const val KEY_USERNAME = "username"
         private const val KEY_PASSWORD = "password"
         private const val KEY_REMEMBER_ME = "remember_me"
@@ -28,6 +20,40 @@ class SessionManager(context: Context) {
         private const val KEY_USER_EMAIL = "user_email"
         private const val KEY_USER_COMPANY = "user_company"
         private const val KEY_BASE_URL = "base_url"
+    }
+
+    private val sharedPreferences: SharedPreferences = createEncryptedPrefs(context)
+
+    private fun createEncryptedPrefs(context: Context): SharedPreferences {
+        return try {
+            buildEncryptedPrefs(context)
+        } catch (e: Exception) {
+            // AEADBadTagException o KeyStoreException: la clave AES-GCM fue destruida
+            // (reinstalación de app, limpieza del Keystore) pero el archivo cifrado sobrevivió.
+            // El archivo es irrecuperable — se borra para crear uno limpio.
+            // Consecuencia esperada: el usuario deberá iniciar sesión nuevamente.
+            Log.w(TAG, "EncryptedSharedPreferences corrupted (key mismatch). Clearing and recreating. Cause: ${e.message}")
+            context.deleteSharedPreferences(PREFS_NAME)
+            try {
+                buildEncryptedPrefs(context)
+            } catch (e2: Exception) {
+                Log.e(TAG, "Failed to recreate EncryptedSharedPreferences after clearing: ${e2.message}")
+                throw e2
+            }
+        }
+    }
+
+    private fun buildEncryptedPrefs(context: Context): SharedPreferences {
+        val masterKey = MasterKey.Builder(context)
+            .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+            .build()
+        return EncryptedSharedPreferences.create(
+            context,
+            PREFS_NAME,
+            masterKey,
+            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+        )
     }
 
     fun saveCredentials(username: String, password: String) {

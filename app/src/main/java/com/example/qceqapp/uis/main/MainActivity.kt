@@ -5,11 +5,13 @@ import android.content.Intent
 import android.os.Bundle
 import android.view.MenuItem
 import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.ActionBarDrawerToggle
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.GravityCompat
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.lifecycleScope
 import com.example.qceqapp.R
 import com.example.qceqapp.data.model.session.UserSession
 import com.example.qceqapp.data.network.Constants
@@ -17,8 +19,10 @@ import com.example.qceqapp.databinding.ActivityMainBinding
 import com.example.qceqapp.uis.login.LoginActivity
 import com.example.qceqapp.uis.toinspect.ToInspectFragment
 import com.example.qceqapp.uis.viewhistory.ViewHistoryFragment
+import com.example.qceqapp.utils.SessionEventBus
 import com.google.android.material.navigation.NavigationView
 import com.example.qceqapp.uis.torelease.ToReleaseFragment
+import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelectedListener {
 
@@ -33,6 +37,7 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
         setupNavigationDrawer()
         updateHeaderWithUserData()
         loadDefaultFragment()
+        observeSessionEvents()
     }
 
     private fun setupToolbar() {
@@ -125,9 +130,45 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
             .show()
     }
 
+    /**
+     * Observa el [SessionEventBus] para detectar expiración de sesión (401).
+     *
+     * Se lanza en [lifecycleScope] (sin repeatOnLifecycle) de forma intencional:
+     * el collector debe estar activo incluso cuando MainActivity está en background
+     * (por ejemplo, cuando el usuario está en QCInspectionActivity), para que
+     * el logout global se dispare correctamente desde cualquier punto de la app.
+     *
+     * [FLAG_ACTIVITY_CLEAR_TASK] en [goToLogin] limpia toda la pila de actividades.
+     */
+    private fun observeSessionEvents() {
+        lifecycleScope.launch {
+            SessionEventBus.sessionExpired.collect {
+                Toast.makeText(
+                    this@MainActivity,
+                    "Session expired. Please log in again.",
+                    Toast.LENGTH_LONG
+                ).show()
+                performSessionExpiredLogout()
+            }
+        }
+    }
+
+    /**
+     * Logout automático por sesión expirada (401).
+     * A diferencia de [performLogout], NO limpia las credenciales guardadas,
+     * permitiendo que el auto-login funcione en el próximo inicio.
+     */
+    private fun performSessionExpiredLogout() {
+        UserSession.clearSession()
+        Constants.token = ""
+        SessionEventBus.resetExpiry()
+        goToLogin()
+    }
+
     private fun performLogout() {
         UserSession.clearSession()
         Constants.token = ""
+        SessionEventBus.resetExpiry()
 
         val sessionManager = com.example.qceqapp.utils.SessionManager(this)
         sessionManager.clearCredentials()

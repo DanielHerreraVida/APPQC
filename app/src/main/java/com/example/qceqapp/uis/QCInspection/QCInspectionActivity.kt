@@ -386,6 +386,15 @@ class QCInspectionActivity : AppCompatActivity() {
             progressBar.visibility = if (isLoading) View.VISIBLE else View.GONE
             btnCompBoxes.isEnabled = !isLoading
         }
+
+        // Oculta el progressBar y muestra el error si la carga de datos falla.
+        // Sin esto, el progressBar queda girando indefinidamente cuando el servidor no responde.
+        viewModel.error.observe(this) { errorMsg ->
+            errorMsg?.let {
+                progressBar.visibility = View.GONE
+                Toast.makeText(this, it, Toast.LENGTH_LONG).show()
+            }
+        }
     }
     private val compResultLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()

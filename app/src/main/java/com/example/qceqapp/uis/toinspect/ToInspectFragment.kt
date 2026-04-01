@@ -40,6 +40,8 @@ class ToInspectFragment : Fragment() {
     private var skipNextResume = false
     private lateinit var scannerLauncher: ActivityResultLauncher<Intent>
     private lateinit var filtersLauncher: ActivityResultLauncher<Intent>
+    // Referencia al diálogo de error activo para evitar múltiples diálogos apilados
+    private var currentErrorDialog: android.app.AlertDialog? = null
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -66,6 +68,8 @@ class ToInspectFragment : Fragment() {
         }, 100)
     }
     override fun onDestroyView() {
+        currentErrorDialog?.dismiss()
+        currentErrorDialog = null
         cleanupFragment()
         super.onDestroyView()
     }
@@ -693,14 +697,19 @@ private fun findOrderByBoxId(scannedCode: String): Entities.QCOrderResponse? {
         }
     }
     private fun showError(message: String) {
-        if (!isAdded || isDetached) {
-            return
-        }
-        android.app.AlertDialog.Builder(requireContext())
+        if (!isAdded || isDetached) return
+        // Descarta el diálogo anterior antes de mostrar uno nuevo.
+        // Previene acumulación de diálogos cuando múltiples errores llegan en paralelo.
+        currentErrorDialog?.dismiss()
+        currentErrorDialog = android.app.AlertDialog.Builder(requireContext())
             .setTitle("Error")
             .setMessage(message)
-            .setPositiveButton("OK") { dialog, _ -> dialog.dismiss() }
-            .show()
+            .setPositiveButton("OK") { dialog, _ ->
+                dialog.dismiss()
+                viewModel.clearError()
+            }
+            .create()
+        currentErrorDialog?.show()
     }
     private fun handleResume() {
         if (skipNextResume) {

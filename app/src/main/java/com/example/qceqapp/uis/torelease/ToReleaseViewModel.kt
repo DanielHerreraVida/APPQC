@@ -3,6 +3,8 @@ package com.example.qceqapp.uis.torelease
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.qceqapp.data.local.PendingReleaseEntity
+import com.example.qceqapp.data.local.QCEQDatabase
 import com.example.qceqapp.data.model.Entities
 import com.example.qceqapp.data.model.session.UserSession
 import com.example.qceqapp.data.network.Service
@@ -21,6 +23,14 @@ class ToReleaseViewModel : ViewModel() {
     }
 
     private val service = Service()
+
+    // DAO obtenido del singleton ya inicializado por QCEQApplication.
+    // No requiere Context en el ViewModel — el constructor permanece sin cambios.
+    private val dao = QCEQDatabase.getInstance().pendingReleaseDao()
+
+    init {
+        loadPendingItemsFromDb()
+    }
 
     private val _releasedBoxes = MutableStateFlow<List<Entities.ReleaseBoxHistoryResponse>>(emptyList())
     val releasedBoxes: StateFlow<List<Entities.ReleaseBoxHistoryResponse>> = _releasedBoxes.asStateFlow()
@@ -54,6 +64,30 @@ class ToReleaseViewModel : ViewModel() {
     private var currentSearchQuery = ""
     private var currentFilters = ReleaseFilterDialog.FilterOptions()
     private var currentPendingFilters = ReleaseFilterDialog.FilterOptions()
+
+    /**
+     * Carga los pending items desde SQLite al iniciar el ViewModel.
+     * Restaura [_allPendingItems] si la app fue cerrada antes de procesar los items.
+     */
+    private fun loadPendingItemsFromDb() {
+        viewModelScope.launch {
+            try {
+                val entities = dao.getAll()
+                if (entities.isNotEmpty()) {
+                    val items = entities.map { PendingReleaseItem(box = it.box, scannedAt = it.scannedAt) }
+                    _allPendingItems.value = items
+                    applyPendingFiltersInternal(currentPendingFilters)
+                    Log.d(TAG, "SQLite: loaded ${items.size} pending items")
+                } else {
+                    Log.d(TAG, "SQLite: no pending items in DB")
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.e(TAG, "SQLite ERROR: failed to load pending items: ${e.message}")
+            }
+        }
+    }
 
     fun loadReleasedBoxes() {
         viewModelScope.launch {
@@ -101,10 +135,23 @@ class ToReleaseViewModel : ViewModel() {
             return
         }
 
-        allItems.add(0, PendingReleaseItem(box = boxCode))
+        val newItem = PendingReleaseItem(box = boxCode)
+        allItems.add(0, newItem)
         _allPendingItems.value = allItems
 
         applyPendingFiltersInternal(currentPendingFilters)
+
+        // Persistir en SQLite — operación async que NO bloquea la UI
+        viewModelScope.launch {
+            try {
+                dao.insert(PendingReleaseEntity(box = newItem.box, scannedAt = newItem.scannedAt))
+                Log.d(TAG, "SQLite: insert pending item -> box=${newItem.box}, scannedAt=${newItem.scannedAt}")
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.e(TAG, "SQLite ERROR: insert failed for box=${newItem.box}: ${e.message}")
+            }
+        }
     }
 
     fun clearDuplicateMessage() {
@@ -121,11 +168,35 @@ class ToReleaseViewModel : ViewModel() {
         _allPendingItems.value = allItems
 
         applyPendingFiltersInternal(currentPendingFilters)
+
+        // Eliminar de SQLite — operación async que NO bloquea la UI
+        viewModelScope.launch {
+            try {
+                dao.deleteByBox(item.box)
+                Log.d(TAG, "SQLite: deleted pending item -> box=${item.box}")
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.e(TAG, "SQLite ERROR: delete failed for box=${item.box}: ${e.message}")
+            }
+        }
     }
 
     fun clearPendingItems() {
         _allPendingItems.value = emptyList()
         _pendingItems.value = emptyList()
+
+        // Limpiar SQLite — operación async que NO bloquea la UI
+        viewModelScope.launch {
+            try {
+                dao.deleteAll()
+                Log.d(TAG, "SQLite: cleared all pending items")
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.e(TAG, "SQLite ERROR: clearAll failed: ${e.message}")
+            }
+        }
     }
 
     fun deleteReleasedBox(box: Entities.ReleaseBoxHistoryResponse) {
@@ -200,6 +271,21 @@ class ToReleaseViewModel : ViewModel() {
                             }
                             _allPendingItems.value = newPendingList
                             _pendingItems.value = newPendingList
+
+                            // Sincronizar SQLite: eliminar SOLO los items liberados exitosamente.
+                            // Los fallidos permanecen en DB — se recuperarán si la app se reinicia.
+                            // Ya estamos en viewModelScope.launch, podemos llamar suspend directo.
+                            val successfulBoxes = items
+                                .filter { !failedIds.contains(it.box) }
+                                .map { it.box }
+                            if (successfulBoxes.isNotEmpty()) {
+                                try {
+                                    dao.deleteByBoxes(successfulBoxes)
+                                    Log.d(TAG, "SQLite: deleted ${successfulBoxes.size} released items, ${newPendingList.size} remaining")
+                                } catch (e: Exception) {
+                                    Log.e(TAG, "SQLite ERROR: failed to sync after release: ${e.message}")
+                                }
+                            }
 
                             loadReleasedBoxes()
                         }

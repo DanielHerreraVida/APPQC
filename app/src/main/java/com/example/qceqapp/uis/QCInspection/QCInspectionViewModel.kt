@@ -38,6 +38,9 @@ class QCInspectionViewModel : ViewModel() {
         return Gson().toJson(selectedBoxes)
     }
 
+    private val _error = MutableLiveData<String?>()
+    val error: LiveData<String?> get() = _error
+
     private val _inspectId = MutableLiveData<String>()
     val inspectId: LiveData<String> get() = _inspectId
     fun deserializeBoxes(json: String): List<Entities.BoxToInspect> {
@@ -74,13 +77,19 @@ class QCInspectionViewModel : ViewModel() {
                 }
                 issuesResult.getOrNull()?.let { _qcIssues.postValue(it) }
                 actionsResult.getOrNull()?.let { _qcActions.postValue(it) }
-               // savedBoxResult.getOrNull()?.let { _savedBox.postValue(it) }
                 savedBoxResult.getOrNull()?.let { savedBox ->
                     _savedBox.postValue(savedBox)
                     boxIdToInspect = savedBox.boxIdToInspect
                 }
+
+                // Si la info de la caja no cargó, es un error crítico para el usuario
+                if (boxInfoResult.isFailure) {
+                    val msg = boxInfoResult.exceptionOrNull()?.message
+                    _error.postValue(msg ?: "Could not load box data. Check your connection.")
+                }
             } catch (e: Exception) {
                 e.printStackTrace()
+                _error.postValue("Could not load inspection data. Check your connection.")
             }
         }
     }

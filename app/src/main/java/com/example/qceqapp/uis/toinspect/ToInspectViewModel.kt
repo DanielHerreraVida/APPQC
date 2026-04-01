@@ -55,15 +55,8 @@ class ToInspectViewModel : ViewModel() {
                 val growersSuccess = growersDeferred.await()
                 val ordersSuccess = ordersDeferred.await()
 
-                if (!ordersSuccess) {
-                    _error.value = "Failed to load orders. Please try again."
-                }
-
-                if (!customersSuccess) {
-                }
-
-                if (!growersSuccess) {
-                }
+                // El error de órdenes ya fue reportado por loadOrders() si ocurrió.
+                // Customers y growers fallan silenciosamente (datos suplementarios).
 
             } catch (e: CancellationException) {
                 throw e
@@ -75,22 +68,21 @@ class ToInspectViewModel : ViewModel() {
         }
     }
 
+    // Customers y growers son datos suplementarios (filtros).
+    // Si fallan, la pantalla sigue siendo funcional con listas vacías.
+    // NO emiten error visible para evitar diálogos innecesarios.
     private suspend fun loadCustomers(): Boolean {
         return try {
             val result = service.getCustomers(0)
             if (result.isSuccess) {
-                val customersList = result.getOrDefault(emptyList())
-                _customers.value = customersList
+                _customers.value = result.getOrDefault(emptyList())
                 true
             } else {
-                val error = result.exceptionOrNull()
-                _error.value = "Error loading customers: ${error?.message}"
                 false
             }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            _error.value = "Failed to load customers: ${e.message}"
             false
         }
     }
@@ -99,22 +91,19 @@ class ToInspectViewModel : ViewModel() {
         return try {
             val result = service.getGrowers(0)
             if (result.isSuccess) {
-                val growersList = result.getOrDefault(emptyList())
-                _growers.value = growersList
+                _growers.value = result.getOrDefault(emptyList())
                 true
             } else {
-                val error = result.exceptionOrNull()
-                _error.value = "Error loading growers: ${error?.message}"
                 false
             }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            _error.value = "Failed to load growers: ${e.message}"
             false
         }
     }
 
+    // Las órdenes son datos críticos. Si fallan, se reporta UN solo error claro.
     private suspend fun loadOrders(): Boolean {
         return try {
             val result = service.getQCOrders()
@@ -124,14 +113,15 @@ class ToInspectViewModel : ViewModel() {
                 _filteredOrders.value = ordersList
                 true
             } else {
-                val error = result.exceptionOrNull()
-                _error.value = "Error loading orders: ${error?.message}"
+                // Usa el mensaje del servidor si está disponible, o uno genérico
+                val serverMessage = result.exceptionOrNull()?.message
+                _error.value = serverMessage ?: "Could not load orders. Please try again."
                 false
             }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            _error.value = "Failed to load orders: ${e.message}"
+            _error.value = "Could not load orders. Check your connection and try again."
             false
         }
     }
