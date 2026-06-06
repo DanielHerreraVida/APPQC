@@ -139,6 +139,10 @@ class QCBoxesActivity : AppCompatActivity() {
 
         viewModel.onError = { error ->
             runOnUiThread {
+                if (isFinishing || isDestroyed) {
+                    Log.w(TAG, "Error callback ignored, activity is finishing: $error")
+                    return@runOnUiThread
+                }
                 progressBar.visibility = View.GONE
                 Log.e(TAG, "Error callback: $error")
 
@@ -180,6 +184,7 @@ class QCBoxesActivity : AppCompatActivity() {
 
             viewModel.getInspectIdByBox(codeReaded) { idToInspect ->
                 runOnUiThread {
+                    if (isFinishing || isDestroyed) return@runOnUiThread
                     progressBar.visibility = View.GONE
 
                     if (!idToInspect.isNullOrEmpty()) {

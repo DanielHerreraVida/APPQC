@@ -24,28 +24,32 @@ interface PendingReleaseDao {
     /**
      * Inserta un item. IGNORE previene crashes si el box ya existe (segunda línea de defensa
      * después de la validación en memoria de addPendingItem).
+     * @return rowId insertado, o -1 si fue ignorado por conflicto (box ya existía).
      */
     @Insert(onConflict = OnConflictStrategy.IGNORE)
-    suspend fun insert(item: PendingReleaseEntity)
+    suspend fun insert(item: PendingReleaseEntity): Long
 
     /**
      * Elimina un item específico por su código de caja.
      * Usado en removePendingItem().
+     * @return número de filas eliminadas (0 = el box no existía en la tabla).
      */
     @Query("DELETE FROM pending_release WHERE box = :box")
-    suspend fun deleteByBox(box: String)
+    suspend fun deleteByBox(box: String): Int
 
     /**
      * Elimina múltiples items por sus códigos de caja.
      * Usado en releaseAllPending() para eliminar los items exitosamente liberados.
+     * @return número de filas eliminadas.
      */
     @Query("DELETE FROM pending_release WHERE box IN (:boxes)")
-    suspend fun deleteByBoxes(boxes: List<String>)
+    suspend fun deleteByBoxes(boxes: List<String>): Int
 
     /**
      * Elimina todos los items de la tabla.
      * Usado en clearPendingItems().
+     * @return número de filas eliminadas.
      */
     @Query("DELETE FROM pending_release")
-    suspend fun deleteAll()
+    suspend fun deleteAll(): Int
 }

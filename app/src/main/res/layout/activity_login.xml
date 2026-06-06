@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:fitsSystemWindows="true"
@@ -14,6 +15,20 @@
         android:paddingEnd="24dp"
         android:paddingTop="32dp"
         android:paddingBottom="32dp">
+
+        <!-- Oculto: el selector de ambiente se abre con long-press sobre el logo -->
+        <ImageButton
+            android:id="@+id/btnChangeUrl"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:src="@drawable/ic_settings"
+            android:contentDescription="Change server URL"
+            android:visibility="gone"
+            app:tint="@color/login_subtitle"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"/>
+
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/logoCard"
             android:layout_width="140dp"
@@ -188,6 +203,22 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             android:layout_marginTop="16dp"/>
+
+        <!-- Oculto: solo visible dentro del diálogo de ambiente (long-press en el logo) -->
+        <TextView
+            android:id="@+id/tvCurrentEnv"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@color/login_subtitle"
+            android:textSize="12sp"
+            android:fontFamily="sans-serif"
+            android:gravity="center"
+            android:visibility="gone"
+            tools:text="PROD • https://wsapi.vida18.com:8089/"
+            app:layout_constraintTop_toBottomOf="@id/tvLoading"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            android:layout_marginTop="24dp"/>
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 </ScrollView>

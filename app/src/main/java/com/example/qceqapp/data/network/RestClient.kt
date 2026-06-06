@@ -15,6 +15,8 @@ import javax.net.ssl.TrustManager
 import javax.net.ssl.X509TrustManager
 import com.example.qceqapp.data.model.session.UserSession
 import com.example.qceqapp.utils.SessionEventBus
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
+import okhttp3.Interceptor
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -46,7 +48,27 @@ class RestClient {
             level = HttpLoggingInterceptor.Level.BODY
         }
 
+        // Reescribe scheme/host/port de cada request con el Constants.BASE_URL actual.
+        // Sin esto, Retrofit queda "pegado" a la URL con la que se construyó esta instancia
+        // y los cambios de ambiente no tienen efecto hasta recrear todos los RestClient.
+        val dynamicUrlInterceptor = Interceptor { chain ->
+            val request = chain.request()
+            val currentBase = Constants.BASE_URL.toHttpUrlOrNull()
+            val newRequest = if (currentBase != null) {
+                val newUrl = request.url.newBuilder()
+                    .scheme(currentBase.scheme)
+                    .host(currentBase.host)
+                    .port(currentBase.port)
+                    .build()
+                request.newBuilder().url(newUrl).build()
+            } else {
+                request
+            }
+            chain.proceed(newRequest)
+        }
+
         return OkHttpClient.Builder()
+            .addInterceptor(dynamicUrlInterceptor)
             .addInterceptor(loggingInterceptor)
             .connectTimeout(Constants.CONNECT_TIMEOUT, TimeUnit.SECONDS)
             .readTimeout(Constants.READ_TIMEOUT, TimeUnit.SECONDS)
@@ -82,8 +104,19 @@ class RestClient {
      *                  que no representan la sesión del usuario.
      */
     private fun handleHttpError(code: Int, rawError: String?, emitOn401: Boolean = true): Exception {
-        Log.e(TAG, "HTTP ERROR -> code=$code")
+        Log.e(TAG, "HTTP ERROR -> code=$code body=$rawError")
         val cleanMessage = rawError
+            // Si el body es JSON tipo {"error":"..."} o {"message":"..."}, extrae el mensaje
+            ?.let { raw ->
+                try {
+                    val json = JSONObject(raw)
+                    json.optString("error").takeIf { it.isNotBlank() }
+                        ?: json.optString("message").takeIf { it.isNotBlank() }
+                        ?: raw
+                } catch (e: Exception) {
+                    raw
+                }
+            }
             ?.replace(Regex("<[^>]*>"), "")
             ?.replace(Regex("\\s+"), " ")
             ?.trim()
@@ -95,7 +128,7 @@ class RestClient {
         }
 
         return when (code) {
-            400 -> Exception("Bad request. Please verify the data sent.")
+            400 -> Exception(cleanMessage ?: "Bad request. Please verify the data sent.")
             401 -> Exception("Unauthorized. Your session has expired or credentials are incorrect.")
             403 -> Exception("Access denied. You don't have permission to perform this action.")
             404 -> Exception("Resource not found.")

@@ -35,6 +35,7 @@ class LoginActivity : AppCompatActivity() {
         updateManager = UpdateManager(this)  // ⭐ INICIALIZAR AQUÍ
 
         initializeBaseUrl()
+        updateEnvLabel()
 
         setupListeners()
         observeViewModel()
@@ -75,6 +76,87 @@ class LoginActivity : AppCompatActivity() {
         }
     }
 
+    private fun environmentName(url: String): String = when (url) {
+        Constants.DEV_URL -> "DEV"
+        Constants.STAGE_URL -> "STAGE"
+        Constants.PROD_URL -> "PROD"
+        else -> "CUSTOM"
+    }
+
+    private fun updateEnvLabel() {
+        binding.tvCurrentEnv.text =
+            "${environmentName(Constants.BASE_URL)} • ${Constants.BASE_URL}"
+    }
+
+    private fun showEnvironmentDialog() {
+        val environments = arrayOf(
+            "DEV • ${Constants.DEV_URL}",
+            "STAGE • ${Constants.STAGE_URL}",
+            "PROD • ${Constants.PROD_URL}",
+            "Custom URL..."
+        )
+        val urls = arrayOf(Constants.DEV_URL, Constants.STAGE_URL, Constants.PROD_URL)
+        val checkedItem = urls.indexOf(Constants.BASE_URL).let { if (it == -1) 3 else it }
+
+        MaterialAlertDialogBuilder(this)
+            .setTitle("Server environment")
+            .setSingleChoiceItems(environments, checkedItem) { dialog, which ->
+                if (which == 3) {
+                    dialog.dismiss()
+                    showCustomUrlDialog()
+                } else {
+                    applyNewUrl(urls[which])
+                    dialog.dismiss()
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun showCustomUrlDialog() {
+        val input = android.widget.EditText(this).apply {
+            inputType = InputType.TYPE_TEXT_VARIATION_URI
+            setText(Constants.BASE_URL)
+            setSelection(text.length)
+        }
+        val container = android.widget.FrameLayout(this).apply {
+            val pad = (20 * resources.displayMetrics.density).toInt()
+            setPadding(pad, pad / 2, pad, 0)
+            addView(input)
+        }
+
+        MaterialAlertDialogBuilder(this)
+            .setTitle("Custom server URL")
+            .setView(container)
+            .setPositiveButton("Save") { _, _ ->
+                var url = input.text.toString().trim()
+                if (!url.startsWith("http://") && !url.startsWith("https://")) {
+                    Toast.makeText(this, "URL must start with http:// or https://", Toast.LENGTH_LONG).show()
+                    return@setPositiveButton
+                }
+                if (!url.endsWith("/")) url += "/"
+                applyNewUrl(url)
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun applyNewUrl(newUrl: String) {
+        if (newUrl == Constants.BASE_URL) {
+            updateEnvLabel()
+            return
+        }
+        Constants.BASE_URL = newUrl
+        Constants.token = ""   // el token del ambiente anterior no sirve en el nuevo
+        sessionManager.saveUrl(newUrl)
+        updateEnvLabel()
+        Toast.makeText(
+            this,
+            "Server changed to ${environmentName(newUrl)}",
+            Toast.LENGTH_SHORT
+        ).show()
+    }
+
     private fun setupListeners() {
         binding.btnLogin.setOnClickListener {
             val username = binding.etUsername.text.toString().trim()
@@ -106,6 +188,14 @@ class LoginActivity : AppCompatActivity() {
             }
 
             binding.etPassword.setSelection(binding.etPassword.text?.length ?: 0)
+        }
+
+        // Acceso discreto al selector de ambiente: long-press sobre el logo.
+        // El botón de settings y la etiqueta de URL están ocultos (visibility=gone)
+        // para mantener la pantalla de login limpia.
+        binding.logoCard.setOnLongClickListener {
+            showEnvironmentDialog()
+            true
         }
     }
     private fun showUpdateDialog(release: GithubRelease) {

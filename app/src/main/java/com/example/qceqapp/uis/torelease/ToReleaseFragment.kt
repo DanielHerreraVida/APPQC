@@ -138,7 +138,9 @@ class ToReleaseFragment : Fragment() {
             VIEW_PENDING -> {
                 binding.recyclerPending.isVisible = true
                 binding.recyclerHistory.isVisible = false
-                viewModel.applyFilters(pendingFilters)
+                // FIX: antes llamaba applyFilters() (filtros de HISTORY) con los filtros
+                // de pending — aplicaba filtros equivocados y nunca refrescaba pending.
+                viewModel.applyPendingFilters(pendingFilters)
 
                 updateEmptyState(viewModel.pendingItems.value.isEmpty(), "No pending items")
                 updateItemCount(viewModel.pendingItems.value.size)
@@ -552,7 +554,10 @@ class ToReleaseFragment : Fragment() {
     }
 
     private fun handleProcessPending() {
-        val itemCount = viewModel.pendingItems.value.size
+        // totalPendingCount(): el total REAL que se enviará al API.
+        // pendingItems.value es la lista filtrada — con filtros activos mostraría
+        // menos items de los que releaseAllPending() realmente envía.
+        val itemCount = viewModel.totalPendingCount()
 
         if (itemCount == 0) {
             showMessage("No items to process")
