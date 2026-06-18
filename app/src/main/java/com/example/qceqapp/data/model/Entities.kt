@@ -245,7 +245,10 @@ class Entities {
         @SerializedName("ordDescription") val ordDescription: String? = null,
         @SerializedName("customerId") val customerId: String? = null,
         @SerializedName("bProduct") val bProduct: String? = null,
-        @SerializedName("qcActions") val qcActions: String? = null
+        @SerializedName("qcActions") val qcActions: String? = null,
+        @SerializedName("falloEnvio") val falloEnvio: Int = 0,
+        // 1 = en algún momento se intentó enviar (aunque ahora esté en "Modified") -> no se puede borrar.
+        @SerializedName("wasSend") val wasSend: Int = 0
     ): Serializable
     data class GetOrderByBoxRequest(
         @SerializedName("IdBox")
@@ -624,6 +627,24 @@ class Entities {
         val message: String,
         val status: Int
     )
+
+    // Borrado de órdenes no enviadas (View History). El backend identifica la orden por idToInspect (GUID)
+    // y registra quién la elimina con usLogin (usuario de sesión).
+    data class DeleteOrderRequest(
+        @SerializedName("idToInspect")
+        val idToInspect: String,
+        @SerializedName("usLogin")
+        val usLogin: String
+    )
+
+    // Respuesta del POST api/qcorder/delete.
+    // status = 1 => eliminada correctamente; status = 0 => "Orden eliminada mal" (es error lógico).
+    data class DeleteOrderResponse(
+        @SerializedName("status")
+        val status: Int = 0,
+        @SerializedName("msg")
+        val msg: String? = null
+    )
     data class ReleaseBoxHistoryResponse(
         val box: Long,
         val numOrder: String,
@@ -636,12 +657,28 @@ class Entities {
     )
 
     data class ReleaseBoxesRequest(
+        @SerializedName("idBoxes")
         val boxIds: List<Int>,
+        @SerializedName("user")
         val user: String
     )
     data class SimpleReleaseResponse(
         val success: Int,
         val failed: Int,
         val failedBoxIds: List<Int>
+    )
+
+    // Respuesta del nuevo endpoint POST api/box/release/batch.
+    // Status por grupo (observado del backend): 1 = liberada ahora ("scaned successfully"),
+    // -1 = ya estaba liberada ("Box is already Release"). Cualquier otro valor = error.
+    data class ReleaseStatusGroup(
+        @SerializedName("status") val status: Int = 0,
+        @SerializedName("count") val count: Int = 0,
+        @SerializedName("idBoxes") val idBoxes: List<Int> = emptyList(),
+        @SerializedName("messages") val messages: List<String> = emptyList()
+    )
+    data class ReleaseBatchResponse(
+        @SerializedName("batchId") val batchId: String? = null,
+        @SerializedName("groups") val groups: List<ReleaseStatusGroup> = emptyList()
     )
 }

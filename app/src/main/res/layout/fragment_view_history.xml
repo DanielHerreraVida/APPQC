@@ -16,14 +16,20 @@
         android:layout_centerInParent="true"
         android:visibility="gone" />
 
-    <!-- RecyclerView del historial -->
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/recyclerViewHistory"
+    <!-- RecyclerView del historial (con pull-to-refresh) -->
+    <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+        android:id="@+id/swipeRefreshHistory"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:scrollbars="vertical"
-        android:clipToPadding="false"
-        tools:listitem="@layout/item_qc_history_row" />
+        android:layout_height="match_parent">
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/recyclerViewHistory"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:scrollbars="vertical"
+            android:clipToPadding="false"
+            tools:listitem="@layout/item_qc_history_row" />
+    </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
 
     <!-- FloatingActionButton con badge -->
     <androidx.coordinatorlayout.widget.CoordinatorLayout

@@ -120,7 +120,13 @@ class HistoryAdapter(
 
             when (item.qaReason?.trim()) {
                 "Saved" -> imageView1.setImageResource(R.drawable.ic_inspsaved)
-                "Sent" -> imageView1.setImageResource(R.drawable.ic_inspsent)
+                "Sent" -> {
+                    if (item.falloEnvio > 1) {
+                        imageView1.setImageResource(R.drawable.ic_inspecsenterror)
+                    } else {
+                        imageView1.setImageResource(R.drawable.ic_inspsent)
+                    }
+                }
                 "Modified" -> imageView1.setImageResource(R.drawable.icissaved)
                 else -> imageView1.setImageResource(R.drawable.ic_flower)
             }
@@ -153,6 +159,38 @@ class HistoryAdapter(
 
     fun resetDebouncer() {
         clickDebouncer.reset()
+    }
+
+    // --- Soporte swipe-to-delete (View History) ---
+
+    fun getItemAt(position: Int): QCHistoryResponse? = filteredList.getOrNull(position)
+
+    /**
+     * ¿Se puede iniciar el gesto de swipe? Todo MENOS estado "Sent".
+     * Las "Sent" no deben deslizarse en absoluto; las "Modified" (u otras) sí.
+     */
+    fun canSwipe(position: Int): Boolean {
+        val item = filteredList.getOrNull(position) ?: return false
+        return !"Sent".equals(item.qaReason?.trim(), ignoreCase = true)
+    }
+
+    /**
+     * ¿Se puede eliminar tras deslizar? Solo si NUNCA se intentó enviar (wasSend != 1).
+     * wasSend == 1 => ya se intentó enviar (aunque ahora esté en "Modified") -> NO borrable, se muestra mensaje.
+     */
+    fun canDelete(position: Int): Boolean {
+        val item = filteredList.getOrNull(position) ?: return false
+        return item.wasSend != 1
+    }
+
+    /** Quita la fila tras un borrado exitoso, manteniendo sincronizada la lista original (filtros). */
+    fun removeItem(position: Int) {
+        val current = filteredList.toMutableList()
+        if (position < 0 || position >= current.size) return
+        val removed = current.removeAt(position)
+        filteredList = current
+        originalList = originalList.filterNot { it === removed }
+        notifyItemRemoved(position)
     }
 
     override fun getFilter(): Filter {

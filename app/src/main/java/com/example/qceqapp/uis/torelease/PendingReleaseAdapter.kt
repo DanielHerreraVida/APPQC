@@ -3,6 +3,7 @@ package com.example.qceqapp.uis.torelease
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.core.view.isVisible
+import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
 import com.example.qceqapp.R
 import com.example.qceqapp.databinding.ItemReleaseBinding
@@ -61,8 +62,20 @@ class PendingReleaseAdapter(
     override fun getItemCount(): Int = pendingItems.size
 
     fun updateData(newItems: List<PendingReleaseItem>) {
+        // DiffUtil: solo actualiza/anima las filas que cambiaron en vez de re-renderizar TODA
+        // la lista (notifyDataSetChanged). Identidad por `box` (clave natural) — así borrar un
+        // item solo anima esa fila y no rebindea las demás. Evita el lag al borrar pendings.
+        val old = pendingItems
+        val diff = DiffUtil.calculateDiff(object : DiffUtil.Callback() {
+            override fun getOldListSize() = old.size
+            override fun getNewListSize() = newItems.size
+            override fun areItemsTheSame(oldItemPosition: Int, newItemPosition: Int) =
+                old[oldItemPosition].box == newItems[newItemPosition].box
+            override fun areContentsTheSame(oldItemPosition: Int, newItemPosition: Int) =
+                old[oldItemPosition] == newItems[newItemPosition]
+        })
         pendingItems = newItems
-        notifyDataSetChanged()
+        diff.dispatchUpdatesTo(this)
     }
 
     fun addItem(item: PendingReleaseItem) {

@@ -21,8 +21,8 @@ android {
         applicationId = "com.example.qceqapp"
         minSdk = 24
         targetSdk = 36
-        versionCode = 2145
-        versionName = "2.1.4.5"
+        versionCode = 2146
+        versionName = "2.1.4.6"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -89,6 +89,7 @@ dependencies {
     // RecyclerView y CardView
     implementation("androidx.recyclerview:recyclerview:1.3.2")
     implementation("androidx.cardview:cardview:1.0.0")
+    implementation("androidx.swiperefreshlayout:swiperefreshlayout:1.1.0")
 
     // ViewModel y LiveData
     implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.7.0")

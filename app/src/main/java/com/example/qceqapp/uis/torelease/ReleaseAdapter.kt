@@ -26,8 +26,6 @@ class ReleaseAdapter(
         RecyclerView.ViewHolder(binding.root) {
 
         fun bind(box: Entities.ReleaseBoxHistoryResponse) {
-            Log.d(TAG, "Binding box: ${box.box} - ${box.user} - ${box.numOrder}")
-
             binding.tvOrderCode.text = "Box: ${box.box}"
             binding.tvOrderNumber.text = if (box.numOrder.isNotEmpty()) {
                 "Order: ${box.numOrder}"

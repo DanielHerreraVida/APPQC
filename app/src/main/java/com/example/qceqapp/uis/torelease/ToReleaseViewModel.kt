@@ -39,6 +39,10 @@ class ToReleaseViewModel : ViewModel() {
     @Volatile
     private var memoryMutated = false
 
+    // Guard contra doble disparo del Process (doble click): evita mandar el mismo batch 2 veces.
+    @Volatile
+    private var isProcessing = false
+
     init {
         loadPendingItemsFromDb()
     }
@@ -82,9 +86,7 @@ class ToReleaseViewModel : ViewModel() {
                 val entities = dao.getAll()
 
                 if (memoryMutated) {
-//                    Log.i(TAG, "SQLITE_DEBUG: initial load DISCARDED — user mutated state " +
-//                            "while getAll() was in flight. staleDb=${entities.map { it.box }} " +
-//                            "memory=${_allPendingItems.value.map { it.box }}")
+
                     return@launch
                 }
 
@@ -92,7 +94,6 @@ class ToReleaseViewModel : ViewModel() {
                     val items = entities.map { PendingReleaseItem(box = it.box, scannedAt = it.scannedAt) }
                     _allPendingItems.value = items
                     applyPendingFiltersInternal(currentPendingFilters)
-//                    Log.i(TAG, "SQLITE_DEBUG: loaded ${items.size} pending items from DB: ${items.map { it.box }}")
                 } else {
                     Log.i(TAG, "SQLITE_DEBUG: no pending items in DB")
                 }
@@ -157,7 +158,6 @@ class ToReleaseViewModel : ViewModel() {
 
         applyPendingFiltersInternal(currentPendingFilters)
 
-        // Persistir en SQLite — dbWriteScope: sobrevive a onCleared() y preserva orden FIFO
         dbWriteScope.launch {
             try {
                 val rowId = dao.insert(PendingReleaseEntity(box = newItem.box, scannedAt = newItem.scannedAt))
@@ -181,19 +181,14 @@ class ToReleaseViewModel : ViewModel() {
         memoryMutated = true
         val before = _allPendingItems.value
         val allItems = before.toMutableList()
-        val removedFromMemory = allItems.remove(item)
+        val removedFromMemory = allItems.removeAll { it.box == item.box }
         _allPendingItems.value = allItems
-
-        Log.i(TAG, "SQLITE_DEBUG: removePendingItem box=${item.box} " +
-                "removedFromMemory=$removedFromMemory " +
-                "memoryBefore=${before.map { it.box }} memoryAfter=${allItems.map { it.box }}")
 
         applyPendingFiltersInternal(currentPendingFilters)
 
         dbWriteScope.launch {
             try {
                 val rows = dao.deleteByBox(item.box)
-                Log.i(TAG, "SQLITE_DEBUG: deleteByBox box=${item.box} rowsAffected=$rows")
                 if (rows == 0) {
                     Log.e(TAG, "SQLITE_DEBUG: deleteByBox affected 0 ROWS for box=${item.box} " +
                             "— la fila no existía en DB al momento del delete")
@@ -258,23 +253,18 @@ class ToReleaseViewModel : ViewModel() {
     }
 
     fun releaseAllPending() {
+        // Re-entrada: si ya hay un Process en curso, ignorar clicks adicionales.
+        if (isProcessing) {
+            Log.i(TAG, "PROCESS ignored: already processing")
+            return
+        }
+        isProcessing = true
         viewModelScope.launch {
             val items = _allPendingItems.value
 
-            // INSTRUMENTACIÓN: estado completo inmediatamente antes del Process.
-            // Si memory y sqlite difieren aquí, hay una escritura perdida o en vuelo.
-            val dbSnapshot = try {
-                dao.getAll().map { it.box }
-            } catch (e: Exception) {
-                listOf("<error: ${e.message}>")
-            }
-            Log.i(TAG, "SQLITE_DEBUG: PROCESS START " +
-                    "memory=${items.map { it.box }} " +
-                    "sqlite=$dbSnapshot " +
-                    "uiFiltered=${_pendingItems.value.map { it.box }}")
-
             if (items.isEmpty()) {
                 _warning.value = "No pending items to release"
+                isProcessing = false
                 return@launch
             }
             try {
@@ -291,62 +281,61 @@ class ToReleaseViewModel : ViewModel() {
                     return@launch
                 }
                 val qcUser = UserSession.getUsername()
-                Log.i(TAG, "SQLITE_DEBUG: PROCESS sending boxIds=$boxIds to releaseBoxesBatch")
                 val result = service.releaseBoxesBatch(boxIds, qcUser)
                 if (result.isSuccess) {
                     val response = result.getOrNull()
-
                     if (response != null) {
-                        if (response.success > 0) {
-                            val failedIds = response.failedBoxIds.map { it.toString() }
+                        // status: 1 = liberada, -1 = ya liberada, 0 = ignorada (ya tiene acción QC), otro = error
+                        val releasedGroup = response.groups.firstOrNull { it.status == 1 }
+                        val alreadyGroup = response.groups.firstOrNull { it.status == -1 }
+                        val ignoredGroup = response.groups.firstOrNull { it.status == 0 }
+                        val errorGroups = response.groups.filter { it.status != 1 && it.status != -1 && it.status != 0 }
+                        val releasedIds = (releasedGroup?.idBoxes ?: emptyList()).map { it.toString() }
+                        val alreadyIds = (alreadyGroup?.idBoxes ?: emptyList()).map { it.toString() }
+                        val ignoredIds = (ignoredGroup?.idBoxes ?: emptyList()).map { it.toString() }
+                        val errorIds = errorGroups.flatMap { it.idBoxes }
+
+                        val releasedCount = releasedGroup?.count ?: releasedIds.size
+                        val alreadyCount = alreadyGroup?.count ?: alreadyIds.size
+                        val ignoredCount = ignoredGroup?.count ?: ignoredIds.size
+                        val errorCount = errorGroups.sumOf { if (it.count > 0) it.count else it.idBoxes.size }
+                        val releasedTotal = releasedCount + alreadyCount
+
+                        // No procesadas (ya tienen acción QC -> status 0, o error) PERMANECEN en Pending
+                        // para que el usuario las revise. Solo se quitan las liberadas (1) y ya liberadas (-1).
+                        val notProcessedIds = (ignoredGroup?.idBoxes ?: emptyList()) + errorIds
+                        val notProcessedCount = ignoredCount + errorCount
+
+                        val resolvedIds = (releasedIds + alreadyIds).toSet()
+                        if (resolvedIds.isNotEmpty()) {
                             val newPendingList = _allPendingItems.value.filter { item ->
-                                failedIds.contains(item.box)
+                                !resolvedIds.contains(item.box)
                             }
                             _allPendingItems.value = newPendingList
-                            _pendingItems.value = newPendingList
-
-                            // Sincronizar SQLite: eliminar SOLO los items liberados exitosamente.
-                            // Los fallidos permanecen en DB — se recuperarán si la app se reinicia.
-                            // NonCancellable: si el usuario navega fuera mientras esto corre,
-                            // la limpieza DEBE completarse — si no, las cajas ya liberadas en el
-                            // servidor quedarían en DB local y se reenviarían como duplicados.
-                            val successfulBoxes = items
-                                .filter { !failedIds.contains(it.box) }
-                                .map { it.box }
-                            if (successfulBoxes.isNotEmpty()) {
+                            applyPendingFiltersInternal(currentPendingFilters)
+                            val resolvedBoxes = items.map { it.box }.filter { resolvedIds.contains(it) }
+                            if (resolvedBoxes.isNotEmpty()) {
                                 try {
                                     withContext(NonCancellable) {
-                                        val rows = dao.deleteByBoxes(successfulBoxes)
-                                        Log.i(TAG, "SQLITE_DEBUG: post-release sync " +
-                                                "deleted=$successfulBoxes rowsAffected=$rows " +
-                                                "remaining=${newPendingList.map { it.box }}")
+                                        dao.deleteByBoxes(resolvedBoxes)
                                     }
                                 } catch (e: Exception) {
                                     Log.e(TAG, "SQLite ERROR: failed to sync after release: ${e.message}")
                                 }
                             }
-
                             loadReleasedBoxes()
                         }
 
-                        when {
-                            response.failed == 0 -> {
-                                _releaseResult.value = ReleaseResult.Success(
-                                    "Successfully released ${response.success} box(es)"
-                                )
-                            }
-                            response.success == 0 -> {
-                                _releaseResult.value = ReleaseResult.Error(
-                                    "Failed to release ${response.failed} box(es)\nFailed IDs: ${response.failedBoxIds.joinToString(", ")}"
-                                )
-                            }
-                            else -> {
-                                _releaseResult.value = ReleaseResult.PartialSuccess(
-                                    successCount = response.success,
-                                    failedCount = response.failed,
-                                    failedIds = response.failedBoxIds
-                                )
-                            }
+                        if (notProcessedCount == 0) {
+                            _releaseResult.value = ReleaseResult.Success(
+                                "Released $releasedTotal box(es)"
+                            )
+                        } else {
+                            _releaseResult.value = ReleaseResult.PartialSuccess(
+                                successCount = releasedTotal,
+                                failedCount = notProcessedCount,
+                                failedIds = notProcessedIds
+                            )
                         }
                     } else {
                         _releaseResult.value = ReleaseResult.Error("Empty response from server")
@@ -364,6 +353,7 @@ class ToReleaseViewModel : ViewModel() {
                 _releaseResult.value = ReleaseResult.Error("Error processing items: ${e.message}")
             } finally {
                 _isLoading.value = false
+                isProcessing = false
             }
         }
     }
@@ -424,11 +414,6 @@ class ToReleaseViewModel : ViewModel() {
         return currentFilters
     }
 
-    /**
-     * Total REAL de items que [releaseAllPending] enviará al API.
-     * El Fragment debe usar esto en el diálogo de confirmación — NO pendingItems.value.size,
-     * que es la lista filtrada por búsqueda/filtros y puede mostrar menos de lo que se envía.
-     */
     fun totalPendingCount(): Int = _allPendingItems.value.size
 
     private fun applyFiltersAndSearch() {

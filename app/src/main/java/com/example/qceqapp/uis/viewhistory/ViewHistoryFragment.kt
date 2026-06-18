@@ -12,6 +12,13 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
+import androidx.appcompat.app.AlertDialog
+import androidx.core.content.ContextCompat
+import androidx.recyclerview.widget.ItemTouchHelper
+import androidx.recyclerview.widget.RecyclerView
 import com.example.qceqapp.R
 import com.google.gson.Gson
 import com.example.qceqapp.data.model.Entities
@@ -108,6 +115,7 @@ class ViewHistoryFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         setupRecyclerView()
+        setupSwipeToDelete()
         setupFloatingActionButton()
         observeViewModel()
         viewModel.loadHistoryData()
@@ -154,6 +162,131 @@ class ViewHistoryFragment : Fragment() {
             adapter = historyAdapter
             setHasFixedSize(true)
         }
+
+        binding.swipeRefreshHistory.setOnRefreshListener {
+            viewModel.loadHistoryData(forceRefresh = true)
+        }
+    }
+
+    private fun setupSwipeToDelete() {
+        val deleteIcon = ContextCompat.getDrawable(requireContext(), R.drawable.ic_close)?.apply {
+            setTint(Color.WHITE)
+        }
+        val background = ColorDrawable(Color.parseColor("#E53935"))
+
+        val callback = object : ItemTouchHelper.SimpleCallback(0, ItemTouchHelper.LEFT) {
+            override fun onMove(
+                recyclerView: RecyclerView,
+                viewHolder: RecyclerView.ViewHolder,
+                target: RecyclerView.ViewHolder
+            ): Boolean = false
+
+            override fun getSwipeDirs(
+                recyclerView: RecyclerView,
+                viewHolder: RecyclerView.ViewHolder
+            ): Int {
+                val pos = viewHolder.bindingAdapterPosition
+                if (pos == RecyclerView.NO_POSITION) return 0
+                // Estado "Sent" NO se desliza. "Modified" (u otros) sí; el borrado lo decide wasSend en onSwiped.
+                return if (historyAdapter.canSwipe(pos)) ItemTouchHelper.LEFT else 0
+            }
+
+            override fun onChildDraw(
+                c: Canvas,
+                recyclerView: RecyclerView,
+                viewHolder: RecyclerView.ViewHolder,
+                dX: Float,
+                dY: Float,
+                actionState: Int,
+                isCurrentlyActive: Boolean
+            ) {
+                val itemView = viewHolder.itemView
+                if (dX < 0) {
+                    background.setBounds(
+                        itemView.right + dX.toInt(),
+                        itemView.top,
+                        itemView.right,
+                        itemView.bottom
+                    )
+                    background.draw(c)
+
+                    deleteIcon?.let { icon ->
+                        val margin = (itemView.height - icon.intrinsicHeight) / 2
+                        val top = itemView.top + margin
+                        val bottom = top + icon.intrinsicHeight
+                        val right = itemView.right - margin
+                        val left = right - icon.intrinsicWidth
+                        icon.setBounds(left, top, right, bottom)
+                        icon.draw(c)
+                    }
+                }
+                super.onChildDraw(c, recyclerView, viewHolder, dX, dY, actionState, isCurrentlyActive)
+            }
+
+            override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) {
+                val pos = viewHolder.bindingAdapterPosition
+                if (pos == RecyclerView.NO_POSITION) return
+                val item = historyAdapter.getItemAt(pos)
+                if (item == null) {
+                    historyAdapter.notifyItemChanged(pos)
+                    return
+                }
+                // Deslizó una fila "Modified" (las "Sent" no llegan aquí). El borrado depende de wasSend:
+                // si ya se intentó enviar (wasSend == 1) NO se borra y se muestra el mensaje.
+                if (!historyAdapter.canDelete(pos)) {
+                    historyAdapter.notifyItemChanged(pos)
+                    showCannotDeleteSentDialog()
+                    return
+                }
+                confirmDeleteOrder(item, pos)
+            }
+        }
+
+        ItemTouchHelper(callback).attachToRecyclerView(binding.recyclerViewHistory)
+    }
+
+    private fun showCannotDeleteSentDialog() {
+        AlertDialog.Builder(requireContext())
+            .setTitle("Cannot delete report")
+            .setMessage("This report has already been sent and can no longer be deleted.")
+            .setPositiveButton("OK", null)
+            .show()
+    }
+
+    private fun confirmDeleteOrder(item: Entities.QCHistoryResponse, position: Int) {
+        AlertDialog.Builder(requireContext())
+            .setTitle("Delete order")
+            .setMessage("Are you sure you want to delete order ${item.orderNum ?: ""}?")
+            .setPositiveButton("Delete") { dialog, _ ->
+                dialog.dismiss()
+                performDeleteOrder(item, position)
+            }
+            .setNegativeButton("Cancel") { dialog, _ ->
+                dialog.dismiss()
+                historyAdapter.notifyItemChanged(position)
+            }
+            .setOnCancelListener {
+                historyAdapter.notifyItemChanged(position)
+            }
+            .setCancelable(false)
+            .show()
+    }
+
+    private fun performDeleteOrder(item: Entities.QCHistoryResponse, position: Int) {
+        val id = item.boxIdToInspect
+        if (id.isNullOrBlank()) {
+            historyAdapter.notifyItemChanged(position)
+            Toast.makeText(requireContext(), "Invalid order id", Toast.LENGTH_SHORT).show()
+            return
+        }
+        viewModel.deleteOrder(id) { success, msg ->
+            if (success) {
+                historyAdapter.removeItem(position)
+            } else {
+                historyAdapter.notifyItemChanged(position)
+            }
+            Snackbar.make(binding.root, msg, Snackbar.LENGTH_LONG).show()
+        }
     }
 
     private fun setupFloatingActionButton() {
@@ -175,8 +308,10 @@ class ViewHistoryFragment : Fragment() {
     private fun observeViewModel() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewModel.isLoading.collectLatest { isLoading ->
-                binding.progressBar.isVisible = isLoading
-                binding.recyclerViewHistory.isVisible = !isLoading
+                val refreshing = binding.swipeRefreshHistory.isRefreshing
+                binding.progressBar.isVisible = isLoading && !refreshing
+                binding.recyclerViewHistory.isVisible = !isLoading || refreshing
+                if (!isLoading) binding.swipeRefreshHistory.isRefreshing = false
             }
         }
 

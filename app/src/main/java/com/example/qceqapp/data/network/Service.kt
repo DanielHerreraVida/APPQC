@@ -371,7 +371,7 @@ class Service {
             Result.failure(e)
         }
     }
-    suspend fun releaseBoxesBatch(boxIds: List<Int>, user: String): Result<Entities.SimpleReleaseResponse> {
+    suspend fun releaseBoxesBatch(boxIds: List<Int>, user: String): Result<Entities.ReleaseBatchResponse> {
         return try {
             restClient.releaseBoxesBatch(boxIds, user)
         } catch (e: Exception) {
@@ -381,6 +381,13 @@ class Service {
     suspend fun deleteReleasedBox(boxNumber: Int, username: String): Result<Entities.ReleaseBoxResponse> {
         return try {
             restClient.deleteReleasedBox(boxNumber, username)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+    suspend fun deleteOrder(idToInspect: String): Result<Entities.DeleteOrderResponse> {
+        return try {
+            restClient.deleteOrder(idToInspect)
         } catch (e: Exception) {
             Result.failure(e)
         }

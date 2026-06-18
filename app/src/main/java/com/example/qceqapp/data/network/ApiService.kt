@@ -192,15 +192,21 @@ interface ApiService {
     suspend fun getReleasedBoxes(
         @Header("Authorization") authorization: String
     ): Response<List<Entities.ReleaseBoxHistoryResponse>>
-    @POST("api/box/release/boxes")
+    @POST("api/box/release/batch")
     suspend fun releaseBoxesBatch(
         @Header("Authorization") authorization: String,
         @Body request: Entities.ReleaseBoxesRequest
-    ): Response<Entities.SimpleReleaseResponse>
+    ): Response<Entities.ReleaseBatchResponse>
     @POST("api/box/release/delete/{boxNumber}/{username}")
     suspend fun deleteReleasedBox(
         @Header("Authorization") authorization: String,
         @Path("boxNumber") boxNumber: Int,
         @Path("username") username: String
     ): Response<Entities.ReleaseBoxResponse>
+
+    @POST("api/qcorder/delete")
+    suspend fun deleteOrder(
+        @Header("Authorization") authorization: String,
+        @Body request: Entities.DeleteOrderRequest
+    ): Response<Entities.DeleteOrderResponse>
 }

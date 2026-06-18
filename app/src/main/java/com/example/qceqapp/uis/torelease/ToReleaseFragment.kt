@@ -40,6 +40,7 @@ class ToReleaseFragment : Fragment() {
     private var _binding: FragmentToReleaseBinding? = null
     private val binding get() = _binding!!
     private var currentFilterDialog: ReleaseFilterDialog? = null
+    private var processDialog: android.app.AlertDialog? = null
 
     private val viewModel: ToReleaseViewModel by viewModels()
     private lateinit var historyAdapter: ReleaseAdapter
@@ -138,8 +139,6 @@ class ToReleaseFragment : Fragment() {
             VIEW_PENDING -> {
                 binding.recyclerPending.isVisible = true
                 binding.recyclerHistory.isVisible = false
-                // FIX: antes llamaba applyFilters() (filtros de HISTORY) con los filtros
-                // de pending — aplicaba filtros equivocados y nunca refrescaba pending.
                 viewModel.applyPendingFilters(pendingFilters)
 
                 updateEmptyState(viewModel.pendingItems.value.isEmpty(), "No pending items")
@@ -438,8 +437,8 @@ class ToReleaseFragment : Fragment() {
                     is ToReleaseViewModel.ReleaseResult.PartialSuccess -> {
                         val message = buildString {
                             append("Released: ${it.successCount}\n")
-                            append("Failed: ${it.failedCount}\n")
-                            append("Failed IDs: ${it.failedIds.joinToString(", ")}")
+                            append("Not processed (already have an action/status): ${it.failedCount}\n")
+                            append("Boxes: ${it.failedIds.joinToString(", ")}")
                         }
                         showPartialSuccessDialog(message, it.successCount)
                         binding.etSearch.text?.clear()
@@ -455,7 +454,7 @@ class ToReleaseFragment : Fragment() {
 
     private fun showPartialSuccessDialog(message: String, successCount: Int) {
         android.app.AlertDialog.Builder(requireContext())
-            .setTitle("Partial Success")
+            .setTitle("Process Result")
             .setMessage(message)
             .setPositiveButton("OK") { dialog, _ ->
                 dialog.dismiss()
@@ -554,17 +553,15 @@ class ToReleaseFragment : Fragment() {
     }
 
     private fun handleProcessPending() {
-        // totalPendingCount(): el total REAL que se enviará al API.
-        // pendingItems.value es la lista filtrada — con filtros activos mostraría
-        // menos items de los que releaseAllPending() realmente envía.
-        val itemCount = viewModel.totalPendingCount()
+        // Evita abrir un segundo diálogo si ya hay uno (doble click en Process).
+        if (processDialog?.isShowing == true) return
 
+        val itemCount = viewModel.totalPendingCount()
         if (itemCount == 0) {
             showMessage("No items to process")
             return
         }
-
-        android.app.AlertDialog.Builder(requireContext())
+        processDialog = android.app.AlertDialog.Builder(requireContext())
             .setTitle("Process Items")
             .setMessage("Release $itemCount pending item(s)?")
             .setPositiveButton("Yes") { _, _ ->
@@ -574,7 +571,6 @@ class ToReleaseFragment : Fragment() {
             .setNegativeButton("Cancel", null)
             .show()
     }
-
     private fun setProcessButtonLoading(isLoading: Boolean) {
         binding.btnProcess.isEnabled = !isLoading
         binding.btnProcess.text = if (isLoading) "" else "Process"
@@ -591,7 +587,6 @@ class ToReleaseFragment : Fragment() {
 
     private fun showBoxInfo(box: Entities.ReleaseBoxHistoryResponse) {
         val formattedDate = formatDate(box.dtModify)
-
         val info = """
             Box ID: ${box.box}
             Order Number: ${if (box.numOrder.isNotEmpty()) box.numOrder else "Not assigned"}
@@ -625,9 +620,7 @@ class ToReleaseFragment : Fragment() {
 
     private fun handleDeletePendingItem(item: PendingReleaseItem) {
         viewModel.removePendingItem(item)
-        showMessage("Item removed")
     }
-
     private fun formatDate(dateString: String): String {
         return try {
             val inputFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS", Locale.getDefault())
@@ -686,6 +679,8 @@ class ToReleaseFragment : Fragment() {
     private fun cleanupFragment() {
         runCatching {
             backPressCallback.remove()
+            processDialog?.dismiss()
+            processDialog = null
 
             val imm = context?.getSystemService(android.content.Context.INPUT_METHOD_SERVICE)
                     as? android.view.inputmethod.InputMethodManager

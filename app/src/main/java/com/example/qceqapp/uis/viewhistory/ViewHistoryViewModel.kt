@@ -104,6 +104,33 @@ class ViewHistoryViewModel : ViewModel() {
         }
     }
 
+    fun deleteOrder(idToInspect: String, onResult: (Boolean, String) -> Unit) {
+        if (idToInspect.isBlank()) {
+            onResult(false, "Invalid order id")
+            return
+        }
+
+        viewModelScope.launch {
+            _isLoading.value = true
+            try {
+                val result = service.deleteOrder(idToInspect)
+                result.onSuccess { resp ->
+                    if (resp.status == 1) {
+                        onResult(true, resp.msg ?: "Order deleted")
+                    } else {
+                        onResult(false, resp.msg ?: "Order could not be deleted")
+                    }
+                }.onFailure { e ->
+                    onResult(false, e.message ?: "Error deleting order")
+                }
+            } catch (e: Exception) {
+                onResult(false, e.message ?: "Error deleting order")
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
     fun clearError() {
         _error.value = null
     }
